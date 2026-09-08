@@ -11,6 +11,17 @@ class ProductProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  /// Daftar kategori unik dari semua produk (untuk filter di kasir).
+  List<String> get categories {
+    final seen = <String>{};
+    final result = <String>[];
+    for (final p in _products) {
+      final c = p.category;
+      if (c.isNotEmpty && seen.add(c)) result.add(c);
+    }
+    return result;
+  }
+
   Future<void> loadProducts({String? search}) async {
     _isLoading = true;
     _error = null;

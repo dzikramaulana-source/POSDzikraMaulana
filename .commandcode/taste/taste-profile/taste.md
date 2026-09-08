@@ -1,5 +1,6 @@
 # Taste Profile
 - User communicates in Bahasa Indonesia; respond, write plans, and produce app UI text in Indonesian. Confidence: 1.0
+- Prefers the app's primary/brand color to be blue, not teal — explicitly requested "ubah warna menjadi biru seperti sebelumnya" and the theme primary was changed from teal `0xFF00796B` to blue `0xFF1E88E5` (all theme/button/icon/sidebar/cashier components cascade from the single `AppColors.primary`). Confidence: 0.7
 - Prefers a plan-first workflow: draft a written plan, wait for user approval, then execute the approved plan on explicit instruction (e.g., "eksekusi rencana ... untuk di implementasikan", "buat saja dulu untuk fitur laporan"). Re-confirmed: agent entered plan mode, asked design-clarification questions, wrote a plan, and implementation only started after "Rencana disetujui". Confidence: 0.95
 - Expects the existing project structure (models, services, state management, screens, DB schema) to be analyzed and documented before any code change. Confidence: 0.8
 - Prefers phased delivery by priority: core features first, defer optional extras (e.g., export) rather than implementing everything at once. Confidence: 0.7

@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/product_provider.dart';
 import '../utils/formatter.dart';
 import '../widgets/pos_app_bar_actions.dart';
+import '../widgets/pos_sidebar.dart';
 import 'kasir_screen.dart';
 import 'product_form_screen.dart';
 import 'report_screen.dart';
@@ -13,21 +14,6 @@ import 'shift_screen.dart';
 import 'stock_check_screen.dart';
 import 'transaction_history_screen.dart';
 import 'user_management_screen.dart';
-
-/// Definisi satu item navigasi sidebar.
-class _RailItem {
-  final IconData icon;
-  final IconData selectedIcon;
-  final String label;
-  final Widget page;
-
-  const _RailItem({
-    required this.icon,
-    required this.selectedIcon,
-    required this.label,
-    required this.page,
-  });
-}
 
 /// Shell utama POS.
 ///
@@ -44,7 +30,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   late final bool _isAdmin;
-  late final List<_RailItem> _items;
+  late final List<PosSidebarItem> _items;
   final List<Widget?> _pageCache = List.filled(5, null);
   int _index = 0;
 
@@ -60,34 +46,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  List<_RailItem> _buildItems(bool isAdmin) {
+  List<PosSidebarItem> _buildItems(bool isAdmin) {
     if (isAdmin) {
       return const [
-        _RailItem(
+        PosSidebarItem(
           icon: Icons.inventory_2_outlined,
           selectedIcon: Icons.inventory_2,
           label: 'Manajemen Produk',
           page: _ProductHomePage(),
         ),
-        _RailItem(
+        PosSidebarItem(
           icon: Icons.assessment_outlined,
           selectedIcon: Icons.assessment,
           label: 'Laporan',
           page: ReportScreen(),
         ),
-        _RailItem(
+        PosSidebarItem(
           icon: Icons.receipt_long_outlined,
           selectedIcon: Icons.receipt_long,
           label: 'Riwayat Transaksi',
           page: TransactionHistoryScreen(),
         ),
-        _RailItem(
+        PosSidebarItem(
           icon: Icons.group_outlined,
           selectedIcon: Icons.group,
           label: 'Manajemen Kasir',
           page: UserManagementScreen(),
         ),
-        _RailItem(
+        PosSidebarItem(
           icon: Icons.account_balance_wallet_outlined,
           selectedIcon: Icons.account_balance_wallet,
           label: 'Kas / Shift',
@@ -96,31 +82,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ];
     }
     return const [
-      _RailItem(
+      PosSidebarItem(
         icon: Icons.account_balance_wallet_outlined,
         selectedIcon: Icons.account_balance_wallet,
         label: 'Kas / Shift',
         page: ShiftScreen(),
       ),
-      _RailItem(
+      PosSidebarItem(
         icon: Icons.point_of_sale_outlined,
         selectedIcon: Icons.point_of_sale,
         label: 'Kasir',
         page: KasirScreen(),
       ),
-      _RailItem(
+      PosSidebarItem(
         icon: Icons.receipt_long_outlined,
         selectedIcon: Icons.receipt_long,
         label: 'Riwayat Transaksi',
         page: TransactionHistoryScreen(),
       ),
-      _RailItem(
+      PosSidebarItem(
         icon: Icons.inventory_2_outlined,
         selectedIcon: Icons.inventory_2,
         label: 'Cek Stok',
         page: StockCheckScreen(),
       ),
-      _RailItem(
+      PosSidebarItem(
         icon: Icons.assessment_outlined,
         selectedIcon: Icons.assessment,
         label: 'Laporan',
@@ -133,70 +119,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() => _index = index);
   }
 
-  Widget _buildRailHeader(BuildContext context) {
-    final user = context.watch<AuthProvider>().user;
-    final name = user?.name ?? 'Pengguna';
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      child: Column(
-        children: [
-          const Text(
-            'POS Kasir',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 12),
-          CircleAvatar(
-            radius: 20,
-            child: Text(
-              initial,
-              style: const TextStyle(fontSize: 18),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          Text(
-            user?.role ?? '',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: Colors.grey[600]),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final items = _items;
-
     return Scaffold(
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          NavigationRail(
-            extended: true,
-            minExtendedWidth: 200,
+          PosSidebar(
             selectedIndex: _index,
-            onDestinationSelected: _selectDestination,
-            leading: _buildRailHeader(context),
-            destinations: [
-              for (final item in items)
-                NavigationRailDestination(
-                  icon: Icon(item.icon),
-                  selectedIcon: Icon(item.selectedIcon),
-                  label: Text(item.label),
-                ),
-            ],
+            onSelected: _selectDestination,
+            items: _items,
           ),
           const VerticalDivider(thickness: 1, width: 1),
           Expanded(

@@ -11,6 +11,7 @@ import 'providers/transaction_history_provider.dart';
 import 'providers/user_provider.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/login_screen.dart';
+import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,13 +39,7 @@ class PosApp extends StatelessWidget {
       child: MaterialApp(
         title: 'POS Kasir',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-          useMaterial3: true,
-          inputDecorationTheme: const InputDecorationTheme(
-            border: OutlineInputBorder(),
-          ),
-        ),
+        theme: AppTheme.light,
         home: const AuthGate(),
       ),
     );
