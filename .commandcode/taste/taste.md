@@ -2,8 +2,4 @@
 See [taste-profile/taste.md](taste-profile/taste.md)
 
 # Workflow & Runtime Ops
-- Prefers backend/dev servers to be verified as actually running (port listening) and live-tested (e.g., login endpoint hit with real credentials) as part of fixing runtime issues, not just code changes. Re-confirmed while diagnosing "Tidak bisa login admin dan karyawan": checked port 3000 listening, live-tested login with real credentials for both admin and kasir via curl/PowerShell, and started the backend in the background to enable live end-to-end verification. Confidence: 0.9
-- Expects code changes to be verified before being reported done — e.g., running `flutter analyze` and builds (web + desktop) to confirm compilation, and treating environment failures (like Windows Developer Mode symlink errors) as distinct from code errors. Confidence: 0.8
-- Accepts background-started servers for a session, but expects a note on how to keep the service running persistently (e.g., `npm run dev` when using the app). Confidence: 0.7
-- Prefers frequently-accessed data/content to be surfaced directly on the dashboard (e.g., showing the product list as cards in the dashboard grid) instead of behind an extra menu tap — asked to display products directly on the Dashboard so users don't need to press the "Produk" menu first, rendering neat photo/name/price/stock cards. Confidence: 0.6
-- Runs the app live via `flutter run` from VS Code; when a feature "belum muncul," the running dev server may be stale (started before the code changes) — diagnose by comparing dev-server start time vs. file timestamps, and note that adding new packages (e.g., `pdf`, `path_provider`) requires a full dev-server restart, not just hot reload. Re-confirmed when the user re-reported "Masih tidak muncul" with a screenshot while the `flutter run` process still predated the new code. Confidence: 0.8
+See [workflow-&-runtime-ops/taste.md](workflow-&-runtime-ops/taste.md)

@@ -26,6 +26,44 @@ class TransactionService {
         .toList();
   }
 
+  // Cari riwayat transaksi: filter nomor invoice, rentang tanggal, kasir, metode bayar
+  static Future<TransactionHistoryPage> searchTransactions({
+    String? invoice,
+    DateTime? start,
+    DateTime? end,
+    String? kasirId,
+    String? payment,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final params = <String, String>{
+      'page': '$page',
+      'limit': '$limit',
+    };
+    if (invoice != null && invoice.trim().isNotEmpty) {
+      params['invoice'] = invoice.trim();
+    }
+    if (start != null) {
+      params['start'] = start.toIso8601String().split('T').first;
+    }
+    if (end != null) {
+      params['end'] = end.toIso8601String().split('T').first;
+    }
+    if (kasirId != null && kasirId.isNotEmpty) {
+      params['kasirId'] = kasirId;
+    }
+    if (payment != null && payment.isNotEmpty) {
+      params['payment'] = payment;
+    }
+
+    final queryString = params.entries
+        .map((e) =>
+            '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}')
+        .join('&');
+    final data = await ApiService.get('/transactions/history?$queryString');
+    return TransactionHistoryPage.fromJson(data as Map<String, dynamic>);
+  }
+
   // Ambil detail transaksi
   static Future<Transaction> getTransaction(String id) async {
     final data = await ApiService.get('/transactions/$id');

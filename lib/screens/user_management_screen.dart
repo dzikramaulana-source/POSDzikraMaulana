@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/user.dart';
+import '../providers/notification_provider.dart';
 import '../providers/user_provider.dart';
+import '../widgets/pos_app_bar_actions.dart';
 import 'user_form_screen.dart';
 
 class UserManagementScreen extends StatefulWidget {
@@ -62,12 +64,95 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     }
   }
 
+  Future<void> _sendBroadcast() async {
+    final titleController = TextEditingController();
+    final bodyController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Kirim Pengumuman'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Judul (opsional)',
+                  prefixIcon: Icon(Icons.title),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: bodyController,
+                minLines: 2,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Isi pengumuman',
+                  prefixIcon: Icon(Icons.campaign),
+                  border: OutlineInputBorder(),
+                  alignLabelWithHint: true,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Pengumuman akan dikirim ke semua kasir.',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Kirim'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final sent = await context.read<NotificationProvider>().broadcast(
+            title: titleController.text.trim(),
+            body: bodyController.text.trim(),
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: sent != null
+              ? Text('Pengumuman terkirim ke $sent kasir')
+              : const Text('Gagal mengirim pengumuman'),
+        ),
+      );
+    }
+
+    titleController.dispose();
+    bodyController.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Manajemen Kasir')),
+      appBar: AppBar(
+        title: const Text('Manajemen Kasir'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.campaign),
+            tooltip: 'Kirim Pengumuman ke Kasir',
+            onPressed: _sendBroadcast,
+          ),
+          const PosAppBarActions(),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final provider = context.read<UserProvider>();

@@ -100,6 +100,39 @@ class TransactionItem {
   }
 }
 
+/// Satu halaman hasil pencarian Riwayat Transaksi (dari /transactions/history).
+class TransactionHistoryPage {
+  final List<Transaction> items;
+  final int page;
+  final int limit;
+  final int total;
+  final int totalPages;
+
+  TransactionHistoryPage({
+    required this.items,
+    required this.page,
+    required this.limit,
+    required this.total,
+    required this.totalPages,
+  });
+
+  factory TransactionHistoryPage.fromJson(Map<String, dynamic> json) {
+    List<Transaction> items = [];
+    if (json['transactions'] is List) {
+      items = (json['transactions'] as List)
+          .map((e) => Transaction.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+    return TransactionHistoryPage(
+      items: items,
+      page: (json['page'] as num?)?.toInt() ?? 1,
+      limit: (json['limit'] as num?)?.toInt() ?? 20,
+      total: (json['total'] as num?)?.toInt() ?? 0,
+      totalPages: (json['totalPages'] as num?)?.toInt() ?? 1,
+    );
+  }
+}
+
 class DailyReport {
   final String date;
   final int totalTransactions;

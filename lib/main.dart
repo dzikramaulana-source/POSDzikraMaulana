@@ -3,8 +3,11 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/notification_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/report_provider.dart';
+import 'providers/shift_provider.dart';
+import 'providers/transaction_history_provider.dart';
 import 'providers/user_provider.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/login_screen.dart';
@@ -27,7 +30,10 @@ class PosApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => ReportProvider()),
+        ChangeNotifierProvider(create: (_) => TransactionHistoryProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => ShiftProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: MaterialApp(
         title: 'POS Kasir',
@@ -67,6 +73,19 @@ class _AuthGateState extends State<AuthGate> {
     if (mounted) setState(() => _checked = true);
   }
 
+  // Nyalakan polling notifikasi saat login, matikan saat logout
+  void _syncNotificationPolling(bool isLoggedIn) {
+    final provider = context.read<NotificationProvider>();
+    if (isLoggedIn) {
+      provider.startPolling();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) provider.refresh();
+      });
+    } else {
+      provider.stopPolling();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
@@ -76,6 +95,8 @@ class _AuthGateState extends State<AuthGate> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
+
+    _syncNotificationPolling(authProvider.isLoggedIn);
 
     return authProvider.isLoggedIn
         ? const DashboardScreen()

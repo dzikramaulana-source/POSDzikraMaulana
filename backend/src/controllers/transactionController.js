@@ -1,5 +1,29 @@
 const Transaction = require('../models/Transaction');
 const Product = require('../models/Product');
+const { createNotification } = require('./notificationController');
+
+// Helper: format angka ribuan sederhana (mis. 25000 -> Rp25.000)
+const formatRupiah = (n) => {
+  const s = Math.round(n).toString();
+  return 'Rp' + s.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+
+// Helper: buat notifikasi untuk kasir pelaku transaksi (tidak menggagalkan transaksi)
+const notifyKasir = async ({ kasirId, notifications }) => {
+  try {
+    for (const n of notifications) {
+      await createNotification({
+        recipient: kasirId,
+        type: n.type,
+        title: n.title,
+        body: n.body,
+        relatedId: n.relatedId || '',
+      });
+    }
+  } catch (err) {
+    console.error('Gagal membuat notifikasi:', err.message);
+  }
+};
 
 // @desc    Buat transaksi baru + kurangi stok
 // @route   POST /api/transactions
@@ -16,6 +40,7 @@ const createTransaction = async (req, res) => {
 
     // Validasi & siapkan data transaksi
     const txItems = [];
+    const lowStockItems = [];
     let total = 0;
     let totalCost = 0;
 
@@ -37,7 +62,12 @@ const createTransaction = async (req, res) => {
 
       // Kurangi stok
       product.stock -= item.qty;
+      const stockAfter = product.stock;
       await product.save();
+
+      if (stockAfter <= 10) {
+        lowStockItems.push({ name: product.name, stock: stockAfter, id: product._id });
+      }
 
       const subtotal = product.price * item.qty;
       total += subtotal;
@@ -83,6 +113,27 @@ const createTransaction = async (req, res) => {
     });
 
     const populated = await Transaction.findById(transaction._id).populate('createdBy', 'name username');
+
+    // Notifikasi untuk kasir pelaku: transaksi berhasil + produk stok menipis/habis
+    const notifications = [
+      {
+        type: 'transaction',
+        title: 'Transaksi Berhasil',
+        body: `${invoiceNumber} • Total ${formatRupiah(total)}`,
+        relatedId: invoiceNumber,
+      },
+      ...lowStockItems.map((p) => ({
+        type: 'stock',
+        title: p.stock === 0 ? 'Stok Habis' : 'Stok Menipis',
+        body:
+          p.stock === 0
+            ? `"${p.name}" stok habis. Segera tambah stok.`
+            : `"${p.name}" tersisa ${p.stock}. Segera tambah stok.`,
+        relatedId: p.id ? p.id.toString() : '',
+      })),
+    ];
+    await notifyKasir({ kasirId: user._id, notifications });
+
     res.status(201).json({
       message: 'Transaksi berhasil',
       transaction: populated,

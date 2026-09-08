@@ -76,6 +76,17 @@ class ApiService {
     return _handleResponse(response);
   }
 
+  static Future<dynamic> patch(String path, Map<String, dynamic> body,
+      {bool withAuth = true}) async {
+    final uri = Uri.parse('${ApiConfig.apiUrl}$path');
+    final response = await http
+        .patch(uri,
+            headers: await _headers(withAuth: withAuth),
+            body: jsonEncode(body))
+        .timeout(const Duration(seconds: 15));
+    return _handleResponse(response);
+  }
+
   static Future<dynamic> delete(String path, {bool withAuth = true}) async {
     final uri = Uri.parse('${ApiConfig.apiUrl}$path');
     final response = await http

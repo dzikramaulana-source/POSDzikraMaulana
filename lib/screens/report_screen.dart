@@ -1,22 +1,19 @@
+import 'package:calendar_date_picker2/calendar_date_picker2.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/report.dart';
-import '../models/transaction.dart';
 import '../providers/report_provider.dart';
 import '../utils/formatter.dart';
 import '../utils/payment_method.dart';
-import 'transaction_detail_screen.dart';
+import '../widgets/pos_app_bar_actions.dart';
 
 /// Periode laporan yang bisa dipilih user.
 enum ReportPeriod {
   today('Hari ini'),
-  yesterday('Kemarin'),
-  last7('7 Hari Terakhir'),
-  last30('30 Hari Terakhir'),
+  thisWeek('Minggu Ini'),
   thisMonth('Bulan Ini'),
-  lastMonth('Bulan Lalu'),
   custom('Custom');
 
   const ReportPeriod(this.label);
@@ -28,21 +25,13 @@ enum ReportPeriod {
       case ReportPeriod.today:
         return (DateTime(now.year, now.month, now.day),
             DateTime(now.year, now.month, now.day));
-      case ReportPeriod.yesterday:
-        final y = now.subtract(const Duration(days: 1));
-        return (DateTime(y.year, y.month, y.day), DateTime(y.year, y.month, y.day));
-      case ReportPeriod.last7:
+      case ReportPeriod.thisWeek:
+        // 7 hari terakhir (rolling): hari ini minus 6 hari s.d. hari ini.
         return (DateTime(now.year, now.month, now.day - 6),
-            DateTime(now.year, now.month, now.day));
-      case ReportPeriod.last30:
-        return (DateTime(now.year, now.month, now.day - 29),
             DateTime(now.year, now.month, now.day));
       case ReportPeriod.thisMonth:
         return (DateTime(now.year, now.month, 1),
             DateTime(now.year, now.month + 1, 0));
-      case ReportPeriod.lastMonth:
-        return (DateTime(now.year, now.month - 1, 1),
-            DateTime(now.year, now.month, 0));
       case ReportPeriod.custom:
         return (DateTime(now.year, now.month, now.day),
             DateTime(now.year, now.month, now.day));
@@ -80,28 +69,44 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Future<void> _pickCustomRange() async {
     final now = DateTime.now();
-    final picked = await showDateRangePicker(
+    final firstDate = DateTime(now.year - 3);
+    final lastDate = DateTime(now.year, now.month, now.day);
+
+    final values = await showCalendarDatePicker2Dialog(
       context: context,
-      firstDate: DateTime(now.year - 3),
-      lastDate: now,
-      initialDateRange: DateTimeRange(
-        start: _customStart,
-        end: _customEnd,
+      config: CalendarDatePicker2WithActionButtonsConfig(
+        calendarType: CalendarDatePicker2Type.range,
+        firstDate: firstDate,
+        lastDate: lastDate,
+        currentDate: now,
+        rangeBidirectional: true,
+        // Mode day menampilkan panah navigasi bulan antarmuka familiar.
+        calendarViewMode: CalendarDatePicker2Mode.day,
+        weekdayLabels: const ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'],
+        firstDayOfWeek: 1, // Senin
+        selectableDayPredicate: (date) =>
+            !date.isBefore(firstDate) && !date.isAfter(lastDate),
+        cancelButton: const Text('Batal'),
+        okButton: const Text('Terapkan'),
       ),
-      helpText: 'Pilih Rentang Tanggal',
-      saveText: 'Terapkan',
+      dialogSize: const Size(400, 500),
+      value: [_customStart, _customEnd],
+      borderRadius: BorderRadius.circular(16),
     );
-    if (picked != null) {
-      setState(() {
-        _period = ReportPeriod.custom;
-        _customStart = picked.start;
-        _customEnd = picked.end;
-      });
-      if (!mounted) return;
-      await context
-          .read<ReportProvider>()
-          .load(start: picked.start, end: picked.end);
-    }
+
+    if (values == null || values.length < 2 || !mounted) return;
+    final start = values[0];
+    final end = values[1];
+    if (start == null || end == null) return;
+
+    setState(() {
+      _period = ReportPeriod.custom;
+      _customStart = start;
+      _customEnd = end;
+    });
+    await context
+        .read<ReportProvider>()
+        .load(start: start, end: end);
   }
 
   Future<void> _refresh() async {
@@ -116,7 +121,10 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Laporan Penjualan')),
+      appBar: AppBar(
+        title: const Text('Laporan Penjualan'),
+        actions: const [PosAppBarActions()],
+      ),
       body: Column(
         children: [
           _buildPeriodFilter(),
@@ -230,14 +238,6 @@ class _ReportScreenState extends State<ReportScreen> {
           _SalesChartCard(chartData: report.chartData),
           const SizedBox(height: 20),
           _buildTopProductsAndPayment(report),
-          const SizedBox(height: 20),
-          _sectionTitle(context, 'Ringkasan Keuntungan'),
-          const SizedBox(height: 8),
-          _buildProfitCard(report.summary),
-          const SizedBox(height: 20),
-          _sectionTitle(context, 'Daftar Transaksi'),
-          const SizedBox(height: 8),
-          _buildTransactionList(report, provider),
         ],
       ),
     );
@@ -253,24 +253,6 @@ class _ReportScreenState extends State<ReportScreen> {
         label: 'Total Penjualan',
         value: formatRupiah(summary.totalRevenue),
         color: Colors.green,
-      ),
-      _SummaryCardData(
-        icon: Icons.receipt_long,
-        label: 'Transaksi',
-        value: formatNumber(summary.totalTransactions),
-        color: Colors.blue,
-      ),
-      _SummaryCardData(
-        icon: Icons.shopping_bag,
-        label: 'Produk Terjual',
-        value: formatNumber(summary.unitsSold),
-        color: Colors.indigo,
-      ),
-      _SummaryCardData(
-        icon: Icons.trending_up,
-        label: 'Rata-rata Transaksi',
-        value: formatRupiah(summary.averageTransaction),
-        color: Colors.purple,
       ),
       _SummaryCardData(
         icon: Icons.savings,
@@ -289,6 +271,12 @@ class _ReportScreenState extends State<ReportScreen> {
         label: 'Margin',
         value: '${summary.margin.toStringAsFixed(1)}%',
         color: Colors.brown,
+      ),
+      _SummaryCardData(
+        icon: Icons.receipt_long,
+        label: 'Transaksi',
+        value: formatNumber(summary.totalTransactions),
+        color: Colors.blue,
       ),
     ];
 
@@ -532,105 +520,6 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  // ---------- Keuntungan ----------
-
-  Widget _buildProfitCard(ReportSummary summary) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Expanded(
-              child: _profitItem('Total Penjualan', formatRupiah(summary.totalRevenue)),
-            ),
-            Expanded(
-              child: _profitItem('Total Modal', formatRupiah(summary.totalCost)),
-            ),
-            Expanded(
-              child: _profitItem('Laba Kotor', formatRupiah(summary.totalProfit)),
-            ),
-            Expanded(
-              child: _profitItem(
-                  'Margin', '${summary.margin.toStringAsFixed(1)}%'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _profitItem(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: Colors.grey[600])),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    );
-  }
-
-  // ---------- Daftar transaksi ----------
-
-  Widget _buildTransactionList(PeriodReport report, ReportProvider provider) {
-    final tx = report.transactions;
-    if (tx.items.isEmpty) {
-      return const _EmptyCard(message: 'Tidak ada transaksi pada periode ini');
-    }
-
-    return Column(
-      children: [
-        Card(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '${formatNumber(tx.total)} transaksi',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                    Text(
-                      'Hal ${tx.page}/${tx.totalPages}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              ...tx.items.map((t) => _TransactionTile(transaction: t)),
-            ],
-          ),
-        ),
-        if (provider.hasMore) ...[
-          const SizedBox(height: 8),
-          provider.isLoadingMore
-              ? const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : OutlinedButton.icon(
-                  onPressed: provider.loadMore,
-                  icon: const Icon(Icons.more_horiz),
-                  label: const Text('Muat Lebih'),
-                ),
-        ],
-      ],
-    );
-  }
-
   // ---------- Helper ----------
 
   Widget _sectionTitle(BuildContext context, String title) {
@@ -742,129 +631,125 @@ class _SalesChartCard extends StatelessWidget {
       return const _EmptyCard(message: 'Belum ada data penjualan');
     }
 
+    // Urutkan tanggal terbaru (Hari Ini) di paling atas.
+    final points = [...chartData]
+      ..sort((a, b) => b.label.compareTo(a.label));
     final maxTotal =
-        chartData.map((e) => e.total).reduce((a, b) => a > b ? a : b);
-    final maxY = maxTotal <= 0 ? 1.0 : maxTotal * 1.15;
-
-    // Tampilkan subset label jika terlalu banyak
-    final step = chartData.length > 12
-        ? (chartData.length / 6).ceil()
-        : 1;
+        chartData.fold<double>(0, (m, e) => e.total > m ? e.total : m);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 16, 20, 12),
-        child: SizedBox(
-          height: 220,
-          child: BarChart(
-            BarChartData(
-              maxY: maxY,
-              minY: 0,
-              alignment: BarChartAlignment.spaceAround,
-              gridData: FlGridData(
-                show: true,
-                drawVerticalLine: false,
-                getDrawingHorizontalLine: (value) => FlLine(
-                  color: Colors.grey.shade200,
-                  strokeWidth: 1,
-                ),
-              ),
-              borderData: FlBorderData(show: false),
-              titlesData: FlTitlesData(
-                topTitles:
-                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles:
-                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 52,
-                    getTitlesWidget: (value, meta) {
-                      return Text(
-                        _shortMoney(value),
-                        style: const TextStyle(fontSize: 10),
-                      );
-                    },
-                  ),
-                ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 28,
-                    getTitlesWidget: (value, meta) {
-                      final index = value.toInt();
-                      if (index < 0 || index >= chartData.length) {
-                        return const SizedBox.shrink();
-                      }
-                      if (index % step != 0) {
-                        return const SizedBox.shrink();
-                      }
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          _shortLabel(chartData[index].label),
-                          style: const TextStyle(fontSize: 9),
+        padding: const EdgeInsets.all(16),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final narrow = constraints.maxWidth < 480;
+            final labelWidth = narrow ? 100.0 : 150.0;
+            final amountStyle = TextStyle(
+              fontSize: narrow ? 10 : 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.teal.shade800,
+            );
+
+            return ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 360),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: points.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final point = points[index];
+                  final date = DateTime.tryParse(point.label);
+                  final dateText = date != null
+                      ? DateFormat('dd/MM/yyyy').format(date)
+                      : point.label;
+
+                  final String relLabel;
+                  if (date == null) {
+                    relLabel = point.label;
+                  } else {
+                    final daysAgo = today
+                        .difference(DateTime(date.year, date.month, date.day))
+                        .inDays;
+                    if (daysAgo <= 0) {
+                      relLabel = 'Hari Ini';
+                    } else if (daysAgo == 1) {
+                      relLabel = 'Kemarin';
+                    } else {
+                      relLabel = '$daysAgo Hari Lalu';
+                    }
+                  }
+
+                  final ratio = maxTotal > 0 ? point.total / maxTotal : 0.0;
+
+                  return Row(
+                    children: [
+                      SizedBox(
+                        width: labelWidth,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              relLabel,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              dateText,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              barTouchData: BarTouchData(
-                touchTooltipData: BarTouchTooltipData(
-                  getTooltipColor: (_) => Colors.teal.shade700,
-                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                    final label = chartData[group.x].label;
-                    return BarTooltipItem(
-                      '$label\n${formatRupiah(rod.toY)}',
-                      const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
                       ),
-                    );
-                  },
-                ),
-              ),
-              barGroups: List.generate(chartData.length, (index) {
-                return BarChartGroupData(
-                  x: index,
-                  barRods: [
-                    BarChartRodData(
-                      toY: chartData[index].total,
-                      width: chartData.length > 15 ? 6 : 14,
-                      color: Colors.teal,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(4),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 22,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                alignment: Alignment.centerLeft,
+                                child: FractionallySizedBox(
+                                  widthFactor: ratio,
+                                  heightFactor: 1,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.teal,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              formatRupiah(point.total),
+                              style: amountStyle,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                );
-              }),
-            ),
-          ),
+                    ],
+                  );
+                },
+              ),
+            );
+          },
         ),
       ),
     );
-  }
-
-  String _shortLabel(String label) {
-    // "2026-08-22" -> "22/08", "04:00" tetap "04:00"
-    if (label.contains('-')) {
-      final parts = label.split('-');
-      if (parts.length == 3) return '${parts[2]}/${parts[1]}';
-    }
-    return label;
-  }
-
-  String _shortMoney(double value) {
-    if (value >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(1)}jt';
-    }
-    if (value >= 1000) {
-      return '${(value / 1000).toStringAsFixed(0)}rb';
-    }
-    return value.toStringAsFixed(0);
   }
 }
 
@@ -906,59 +791,6 @@ class _PaymentPieChart extends StatelessWidget {
             ),
           );
         }),
-      ),
-    );
-  }
-}
-
-class _TransactionTile extends StatelessWidget {
-  final Transaction transaction;
-
-  const _TransactionTile({required this.transaction});
-
-  @override
-  Widget build(BuildContext context) {
-    final itemCount =
-        transaction.items.fold<int>(0, (sum, i) => sum + i.qty);
-
-    return ListTile(
-      dense: true,
-      title: Row(
-        children: [
-          Expanded(
-            child: Text(
-              transaction.invoiceNumber,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-          Text(
-            formatRupiah(transaction.total),
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 2),
-        child: Row(
-          children: [
-            Icon(_paymentIcon(transaction.paymentMethod),
-                size: 14, color: _paymentColor(transaction.paymentMethod)),
-            const SizedBox(width: 4),
-            Text(_paymentLabel(transaction.paymentMethod)),
-            const SizedBox(width: 12),
-            Text('${formatNumber(itemCount)} item'),
-          ],
-        ),
-      ),
-      trailing: const Icon(Icons.chevron_right, size: 20),
-      onTap: () => _showDetail(context),
-    );
-  }
-
-  void _showDetail(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => TransactionDetailScreen(transaction: transaction),
       ),
     );
   }

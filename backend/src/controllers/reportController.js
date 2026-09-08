@@ -137,14 +137,12 @@ const getDailyReport = async (req, res) => {
   }
 };
 
-// @desc    Laporan periode: dashboard ringkasan + grafik + top produk + payment + transaksi
-// @route   GET /api/reports/period?start=YYYY-MM-DD&end=YYYY-MM-DD&page=1&limit=20
+// @desc    Laporan periode: ringkasan + perbandingan + grafik + top produk + payment
+// @route   GET /api/reports/period?start=YYYY-MM-DD&end=YYYY-MM-DD
 // @access  Private
 const getPeriodReport = async (req, res) => {
   try {
     const { start: startStr, end: endStr } = req.query;
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
 
     const range = getRange(startStr, endStr);
     if (!range) {
@@ -165,34 +163,20 @@ const getPeriodReport = async (req, res) => {
     const prevStart = new Date(prevEnd.getTime() - durationMs + 1);
     const previousSummary = await buildSummary({ start: prevStart, end: prevEnd });
 
-    // 3. Data grafik: per jam jika satu hari, per tanggal jika multi-hari
-    const isSingleDay = startStr === (endStr || startStr);
-    let chartData;
-    if (isSingleDay) {
-      chartData = await Transaction.aggregate([
-        { $match: match },
-        {
-          $group: {
-            _id: { $dateToString: { format: '%H:00', date: '$createdAt' } },
-            total: { $sum: '$total' },
-          },
+    // 3. Data grafik: per tanggal (dipakai untuk bar chart horizontal harian).
+    //    Periode satu hari pun digabung per tanggal agar label "Hari Ini"
+    //    konsisten; hanya tanggal yang memiliki transaksi yang dikirim.
+    const chartDataRaw = await Transaction.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          total: { $sum: '$total' },
         },
-        { $sort: { _id: 1 } },
-      ]);
-      chartData = chartData.map((d) => ({ label: d._id, total: d.total }));
-    } else {
-      chartData = await Transaction.aggregate([
-        { $match: match },
-        {
-          $group: {
-            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-            total: { $sum: '$total' },
-          },
-        },
-        { $sort: { _id: 1 } },
-      ]);
-      chartData = chartData.map((d) => ({ label: d._id, total: d.total }));
-    }
+      },
+      { $sort: { _id: 1 } },
+    ]);
+    const chartData = chartDataRaw.map((d) => ({ label: d._id, total: d.total }));
 
     // 4. Top produk terlaris (qty)
     const topProducts = await Transaction.aggregate([
@@ -236,19 +220,6 @@ const getPeriodReport = async (req, res) => {
       paymentSummaryMap[p._id] = { count: p.count, total: p.total };
     });
 
-    // 6. Daftar transaksi (pagination)
-    const [totalTransactions] = await Transaction.aggregate([
-      { $match: match },
-      { $count: 'total' },
-    ]);
-    const total = totalTransactions?.total ?? 0;
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-    const transactions = await Transaction.find(match)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .populate('createdBy', 'name username');
-
     res.json({
       start: startStr,
       end: endStr || startStr,
@@ -257,13 +228,6 @@ const getPeriodReport = async (req, res) => {
       chartData,
       topProducts,
       paymentSummary: paymentSummaryMap,
-      transactions: {
-        items: transactions,
-        page,
-        limit,
-        total,
-        totalPages,
-      },
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

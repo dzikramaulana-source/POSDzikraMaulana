@@ -10,17 +10,15 @@ class ReportService {
     return DailyReport.fromJson(data);
   }
 
-  // Laporan periode: summary + grafik + top produk + payment + transaksi (pagination)
+  // Laporan analisis periode: summary + perbandingan + grafik + top produk + payment
   static Future<PeriodReport> getPeriodReport({
     required DateTime start,
     required DateTime end,
-    int page = 1,
-    int limit = 20,
   }) async {
     final startStr = _dateStr(start);
     final endStr = _dateStr(end);
     final data = await ApiService.get(
-      '/reports/period?start=$startStr&end=$endStr&page=$page&limit=$limit',
+      '/reports/period?start=$startStr&end=$endStr',
     );
     return PeriodReport.fromJson(data);
   }

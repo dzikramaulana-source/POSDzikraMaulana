@@ -7,6 +7,8 @@ const productRoutes = require('./src/routes/productRoutes');
 const transactionRoutes = require('./src/routes/transactionRoutes');
 const reportRoutes = require('./src/routes/reportRoutes');
 const userRoutes = require('./src/routes/userRoutes');
+const shiftRoutes = require('./src/routes/shiftRoutes');
+const notificationRoutes = require('./src/routes/notificationRoutes');
 
 const app = express();
 
@@ -24,6 +26,8 @@ app.use('/api/products', productRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/shifts', shiftRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Error handler 404
 app.use((req, res) => {

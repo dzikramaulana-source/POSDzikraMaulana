@@ -1,3 +1,6 @@
+/// Status ketersediaan stok produk
+enum StockStatus { available, low, out }
+
 class Product {
   final String id;
   final String name;
@@ -48,5 +51,12 @@ class Product {
       stock: stock ?? this.stock,
       category: category,
     );
+  }
+
+  /// Status ketersediaan stok: habis (0), menipis (1–10), tersedia (>10)
+  StockStatus get stockStatus {
+    if (stock <= 0) return StockStatus.out;
+    if (stock <= 10) return StockStatus.low;
+    return StockStatus.available;
   }
 }

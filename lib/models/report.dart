@@ -1,5 +1,3 @@
-import 'transaction.dart';
-
 /// Ringkasan penjualan untuk satu periode (dari endpoint /reports/period).
 class ReportSummary {
   final double totalRevenue;
@@ -86,40 +84,11 @@ class PaymentMethodSummary {
   });
 }
 
-/// Pagination info untuk daftar transaksi.
-class TransactionPage {
-  final List<Transaction> items;
-  final int page;
-  final int limit;
-  final int total;
-  final int totalPages;
-
-  TransactionPage({
-    required this.items,
-    required this.page,
-    required this.limit,
-    required this.total,
-    required this.totalPages,
-  });
-
-  factory TransactionPage.fromJson(Map<String, dynamic> json) {
-    List<Transaction> items = [];
-    if (json['items'] is List) {
-      items = (json['items'] as List)
-          .map((e) => Transaction.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-    return TransactionPage(
-      items: items,
-      page: (json['page'] as num?)?.toInt() ?? 1,
-      limit: (json['limit'] as num?)?.toInt() ?? 20,
-      total: (json['total'] as num?)?.toInt() ?? 0,
-      totalPages: (json['totalPages'] as num?)?.toInt() ?? 1,
-    );
-  }
-}
-
-/// Laporan periode lengkap dari endpoint /reports/period.
+/// Laporan analisis periode dari endpoint /reports/period.
+///
+/// Berisi ringkasan penjualan, perbandingan periode, grafik, produk terlaris,
+/// dan metode pembayaran. Daftar transaksi individual ditangani terpisah oleh
+/// halaman Riwayat Transaksi.
 class PeriodReport {
   final String start;
   final String end;
@@ -128,7 +97,6 @@ class PeriodReport {
   final List<ChartPoint> chartData;
   final List<TopSellingProduct> topProducts;
   final List<PaymentMethodSummary> paymentSummary;
-  final TransactionPage transactions;
 
   PeriodReport({
     required this.start,
@@ -138,7 +106,6 @@ class PeriodReport {
     required this.chartData,
     required this.topProducts,
     required this.paymentSummary,
-    required this.transactions,
   });
 
   factory PeriodReport.fromJson(Map<String, dynamic> json) {
@@ -172,8 +139,6 @@ class PeriodReport {
       paymentSummary.sort((a, b) => b.total.compareTo(a.total));
     }
 
-    final txJson = json['transactions'] as Map<String, dynamic>? ?? {};
-
     return PeriodReport(
       start: json['start']?.toString() ?? '',
       end: json['end']?.toString() ?? '',
@@ -183,7 +148,6 @@ class PeriodReport {
       chartData: chartData,
       topProducts: topProducts,
       paymentSummary: paymentSummary,
-      transactions: TransactionPage.fromJson(txJson),
     );
   }
 }
