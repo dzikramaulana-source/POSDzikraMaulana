@@ -8,7 +8,10 @@ class AppColors {
   AppColors._();
 
   /// Warna utama (brand) — jamak dipakai untuk tombol, aksen, dan highlight.
-  static const Color primary = Color(0xFF1E88E5);
+  static const Color primary = Color(0xFF2E4F7A);
+
+  /// Warna aksen cerah ala POS modern (oranye hangat untuk tombol Bayar).
+  static const Color accent = Color(0xFFFF7A1A);
 
   /// Latar belakang layar / area konten.
   static const Color background = Color(0xFFF4F6F8);

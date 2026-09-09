@@ -59,9 +59,9 @@ class _KasirScreenState extends State<KasirScreen> {
     final productProvider = context.watch<ProductProvider>();
     final cart = context.watch<CartProvider>();
 
-    // Lebar panel order menyesuaikan lebar layar, dibatasi 300–420.
+    // Lebar panel order menyesuaikan lebar layar, dibatasi 320–440.
     final cartWidth =
-        (MediaQuery.sizeOf(context).width * 0.35).clamp(300.0, 420.0).toDouble();
+        (MediaQuery.sizeOf(context).width * 0.34).clamp(320.0, 440.0).toDouble();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -98,20 +98,41 @@ class _KasirScreenState extends State<KasirScreen> {
   /// Bar POS/Kasir: judul, pencarian, dan filter kategori (full-width).
   Widget _buildHeaderBar(ProductProvider provider) {
     return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Text(
-                'POS / Kasir',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
+                child: const Icon(Icons.point_of_sale, color: AppColors.primary),
+              ),
+              const SizedBox(width: 12),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Kasir',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  Text(
+                    'Pilih produk & buat order pelanggan',
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  ),
+                ],
               ),
               const Spacer(),
               const PosAppBarActions(),
@@ -131,9 +152,9 @@ class _KasirScreenState extends State<KasirScreen> {
                     prefixIcon:
                         const Icon(Icons.search, color: AppColors.textMuted),
                     filled: true,
-                    fillColor: AppColors.background,
-                    contentPadding:
-                        const EdgeInsets.symmetric(vertical: 12),
+                    fillColor: AppColors.surface,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: AppColors.border),
@@ -141,6 +162,11 @@ class _KasirScreenState extends State<KasirScreen> {
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          const BorderSide(color: AppColors.primary, width: 1.5),
                     ),
                     suffixIcon: _searchController.text.isEmpty
                         ? null
@@ -179,7 +205,47 @@ class _KasirScreenState extends State<KasirScreen> {
             .where((p) => p.category == _selectedCategory)
             .toList();
 
-    return _buildProductGrid(provider, products);
+    final itemCount = products.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+          child: Row(
+            children: [
+              const Text(
+                'Daftar Produk',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$itemCount produk',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Icon(Icons.grid_view_rounded, size: 18, color: AppColors.textMuted),
+            ],
+          ),
+        ),
+        Expanded(child: _buildProductGrid(provider, products)),
+      ],
+    );
   }
 
   Widget _buildProductGrid(ProductProvider provider, List<Product> products) {
@@ -210,13 +276,12 @@ class _KasirScreenState extends State<KasirScreen> {
     }
 
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        // Kartu lebih tinggi daripada lebar (foto persegi + teks).
-        childAspectRatio: 0.72,
+        childAspectRatio: 0.8,
       ),
       itemCount: products.length,
       itemBuilder: (context, index) {
@@ -245,9 +310,9 @@ class _CategoryFilter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // "Semua" selalu tampil di depan.
-    final visible = ['Semua', ...categories].take(4).toList();
+    final visible = ['Semua', ...categories].take(5).toList();
     return SizedBox(
-      height: 48,
+      height: 46,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: visible.length,
@@ -257,7 +322,8 @@ class _CategoryFilter extends StatelessWidget {
           final isSelected = category == selected;
           return GestureDetector(
             onTap: () => onChanged(category),
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
               alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
@@ -266,13 +332,34 @@ class _CategoryFilter extends StatelessWidget {
                 border: Border.all(
                   color: isSelected ? AppColors.primary : AppColors.border,
                 ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color:
+                              AppColors.primary.withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
               ),
-              child: Text(
-                category,
-                style: TextStyle(
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected ? Colors.white : AppColors.textDark,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isSelected) ...[
+                    const Icon(Icons.check, size: 16, color: Colors.white),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(
+                    category,
+                    style: TextStyle(
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.w500,
+                      color: isSelected ? Colors.white : AppColors.textDark,
+                    ),
+                  ),
+                ],
               ),
             ),
           );
@@ -299,109 +386,124 @@ class _ProductCard extends StatelessWidget {
 
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(16),
       clipBehavior: Clip.antiAlias,
+      elevation: 0,
+      shadowColor: Colors.black.withValues(alpha: 0.06),
       child: InkWell(
         onTap: outOfStock ? null : onTap,
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Foto/ikon produk yang mengisi sisa tinggi kartu.
-                  Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        Icons.inventory_2,
-                        size: 44,
-                        color: outOfStock
-                            ? AppColors.textMuted
-                            : AppColors.primary.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textDark,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    formatRupiah(product.price),
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: outOfStock ? AppColors.textMuted : AppColors.success,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      _StockChip(status: product.stockStatus, lowStock: lowStock),
-                      const Spacer(),
-                      if (inCart > 0)
-                        Container(
-                          constraints: const BoxConstraints(
-                            minWidth: 20,
-                            minHeight: 20,
-                          ),
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '$inCart',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
+        child: Ink(
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: inCart > 0 ? AppColors.primary : AppColors.border,
+              width: inCart > 0 ? 1.5 : 1,
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Foto/ikon produk yang mengisi sisa tinggi kartu.
+                    Expanded(
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: outOfStock
+                              ? AppColors.background
+                              : AppColors.primary.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.inventory_2,
+                            size: 42,
+                            color: outOfStock
+                                ? AppColors.textMuted
+                                : AppColors.primary.withValues(alpha: 0.55),
                           ),
                         ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            if (outOfStock)
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  alignment: Alignment.center,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(20),
+                      ),
                     ),
-                    child: const Text(
-                      'Habis',
+                    const SizedBox(height: 10),
+                    Text(
+                      product.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textDark,
+                        fontSize: 13,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      formatRupiah(product.price),
                       style: TextStyle(
-                        color: Colors.white,
                         fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: outOfStock ? AppColors.textMuted : AppColors.success,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(child: _StockChip(status: product.stockStatus, lowStock: lowStock)),
+                        if (inCart > 0) ...[
+                          const Spacer(),
+                          Container(
+                            constraints:
+                                const BoxConstraints(minWidth: 22, minHeight: 22),
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                            child: Text(
+                              '$inCart',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (outOfStock)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    alignment: Alignment.center,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'Habis',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -450,7 +552,6 @@ class _CartPanel extends StatelessWidget {
   });
 
   double get _subtotal => cart.total;
-  int get _itemCount => cart.itemCount;
 
   @override
   Widget build(BuildContext context) {
@@ -466,19 +567,26 @@ class _CartPanel extends StatelessWidget {
         children: [
           // Header panel
           Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
             decoration: const BoxDecoration(
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.shopping_cart_checkout,
-                    color: AppColors.primary),
-                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: const Icon(Icons.shopping_cart_checkout,
+                      size: 20, color: AppColors.primary),
+                ),
+                const SizedBox(width: 10),
                 const Text(
-                  'Order',
+                  'Pesanan',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 17,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textDark,
                   ),
@@ -488,15 +596,15 @@ class _CartPanel extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
+                    color: AppColors.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    '$_itemCount item$_itemCount',
+                    '${cart.itemCount} item',
                     style: const TextStyle(
                       color: AppColors.primary,
                       fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -506,7 +614,7 @@ class _CartPanel extends StatelessWidget {
                     onPressed: cart.clear,
                     child: const Text(
                       'Kosongkan',
-                      style: TextStyle(color: AppColors.textMuted),
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                   ),
               ],
@@ -517,7 +625,7 @@ class _CartPanel extends StatelessWidget {
             child: cart.isEmpty
                 ? const _EmptyCart()
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
                     itemCount: cart.items.length,
                     itemBuilder: (context, index) {
                       final item = cart.items[index];
@@ -527,9 +635,12 @@ class _CartPanel extends StatelessWidget {
           ),
           // Ringkasan + pembayaran
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
             decoration: const BoxDecoration(
               border: Border(top: BorderSide(color: AppColors.border)),
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -550,32 +661,54 @@ class _CartPanel extends StatelessWidget {
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text(
-                      'Total Pembayaran',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textDark,
-                      ),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Total Pembayaran',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Sudah termasuk pajak',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
                     ),
                     Text(
                       formatRupiah(total),
                       style: const TextStyle(
-                        fontSize: 24,
+                        fontSize: 26,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
+                        color: AppColors.textDark,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 // Tombol Bayar besar
                 SizedBox(
                   width: double.infinity,
-                  height: 56,
+                  height: 54,
                   child: FilledButton.icon(
                     onPressed: cart.isEmpty ? null : onCheckout,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      disabledBackgroundColor:
+                          AppColors.primary.withValues(alpha: 0.4),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
                     icon: const Icon(Icons.payment, size: 22),
                     label: const Text(
                       'Bayar Sekarang',
@@ -623,25 +756,33 @@ class _EmptyCart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.shopping_cart_outlined,
-              size: 56, color: AppColors.textMuted),
-          SizedBox(height: 12),
-          Text(
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.shopping_cart_outlined,
+                size: 48, color: AppColors.primary),
+          ),
+          const SizedBox(height: 16),
+          const Text(
             'Keranjang masih kosong',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: AppColors.textDark,
+              fontSize: 15,
             ),
           ),
-          SizedBox(height: 4),
-          Text(
-            'Pilih produk di sebelah kiri\nuntuk mulai membuat order',
+          const SizedBox(height: 6),
+          const Text(
+            'Pilih produk di sebelah kiri\nuntuk mulai membuat pesanan',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 13, color: AppColors.textMuted, height: 1.4),
           ),
         ],
       ),
@@ -663,18 +804,19 @@ class _OrderItemTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 46,
+            height: 46,
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.inventory_2,
                 size: 22, color: AppColors.primary),
@@ -694,15 +836,15 @@ class _OrderItemTile extends StatelessWidget {
                     fontSize: 13,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
-                  formatRupiah(item.price),
+                  '${formatRupiah(item.price)} / item',
                   style: const TextStyle(
                     color: AppColors.textMuted,
                     fontSize: 12,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     _QtyButton(
@@ -713,7 +855,7 @@ class _OrderItemTile extends StatelessWidget {
                     Text(
                       '${item.qty}',
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textDark,
                       ),

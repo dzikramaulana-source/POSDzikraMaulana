@@ -44,13 +44,33 @@ class PosSidebar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
       child: Column(
         children: [
-          const Text(
-            'POS Kasir',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: AppColors.textDark,
-            ),
+          // Branding: ikon POS + judul + subjudul
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.point_of_sale, size: 30, color: AppColors.primary),
+              const SizedBox(width: 8),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'POS Kasir',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  Text(
+                    'Panel Penjualan Cepat',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           CircleAvatar(
