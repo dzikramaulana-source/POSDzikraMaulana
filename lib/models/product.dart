@@ -67,10 +67,10 @@ class Product {
     return '${ApiConfig.baseUrl}$image';
   }
 
-  /// Status ketersediaan stok: habis (0), menipis (1–10), tersedia (>10)
+  /// Status ketersediaan stok: habis (0), menipis (1–5), tersedia (>5)
   StockStatus get stockStatus {
     if (stock <= 0) return StockStatus.out;
-    if (stock <= 10) return StockStatus.low;
+    if (stock <= 5) return StockStatus.low;
     return StockStatus.available;
   }
 }

@@ -68,7 +68,7 @@ const createTransaction = async (req, res) => {
       const stockAfter = product.stock;
       await product.save();
 
-      if (stockAfter <= 10) {
+      if (stockAfter <= 5) {
         lowStockItems.push({ name: product.name, stock: stockAfter, id: product._id });
       }
 

@@ -10,6 +10,8 @@ const reportRoutes = require('./src/routes/reportRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const shiftRoutes = require('./src/routes/shiftRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
+const whatsappRoutes = require('./src/routes/whatsappRoutes');
+const whatsappService = require('./src/services/whatsappService');
 
 const app = express();
 
@@ -32,6 +34,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/shifts', shiftRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // Error handler 404
 app.use((req, res) => {
@@ -52,5 +55,8 @@ const PORT = process.env.PORT || 3000;
 connectDB().then(() => {
   app.listen(PORT, () => {
     console.log(`Server POS berjalan di http://localhost:${PORT}`);
+    // Mulai koneksi WhatsApp di background agar QR langsung tampil di terminal
+    // (dan di http://localhost:PORT/api/whatsapp) tanpa memanggil endpoint dulu.
+    whatsappService.initialize();
   });
 });

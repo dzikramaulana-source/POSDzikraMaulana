@@ -209,22 +209,4 @@ class ReceiptPrinter {
     // Mobile / fallback: dialog simpan file.
     await Printing.sharePdf(bytes: pdf, filename: fileName);
   }
-
-  /// Simpan struk ke folder Downloads (desktop) dan kembalikan path-nya,
-  /// atau null bila platform tidak menyediakan folder Downloads.
-  ///
-  /// Dipakai fitur "Kirim ke WhatsApp" agar file PDF bisa dilampirkan kasir.
-  static Future<String?> saveReceiptPdfToDownloads(
-      Transaction transaction) async {
-    final pdf = await generateReceiptPdf(transaction);
-    final fileName = 'Struk_${transaction.invoiceNumber}.pdf';
-
-    if (kIsWeb) return null;
-    final dir = await getDownloadsDirectory();
-    if (dir == null) return null;
-
-    final file = File('${dir.path}${Platform.pathSeparator}$fileName');
-    await file.writeAsBytes(pdf, flush: true);
-    return file.path;
-  }
 }

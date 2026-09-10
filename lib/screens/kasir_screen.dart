@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:printing/printing.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../models/product.dart';
 import '../models/transaction.dart';
 import '../providers/cart_provider.dart';
@@ -11,6 +9,7 @@ import '../services/transaction_service.dart';
 import '../utils/formatter.dart';
 import '../utils/payment_method.dart';
 import '../utils/receipt_printer.dart';
+import '../utils/whatsapp_sender.dart';
 import '../theme/app_colors.dart';
 import '../widgets/pos_app_bar_actions.dart';
 
@@ -388,7 +387,7 @@ class _ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final outOfStock = product.stock <= 0;
-    final lowStock = !outOfStock && product.stock <= 10;
+    final lowStock = !outOfStock && product.stock <= 5;
     final inCart = context.watch<CartProvider>().items
         .where((i) => i.productId == product.id)
         .fold<int>(0, (sum, i) => sum + i.qty);
@@ -997,54 +996,7 @@ class _PaymentSheetState extends State<_PaymentSheet> {
       // Tampilkan dialog sukses
       await showDialog<void>(
         context: context,
-        builder: (context) => AlertDialog(
-          icon: const Icon(Icons.check_circle, color: Colors.green, size: 56),
-          title: const Text('Transaksi Berhasil'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('No. Invoice: ${transaction.invoiceNumber}'),
-              const SizedBox(height: 8),
-              Text('Total: ${formatRupiah(transaction.total)}'),
-              if (transaction.change > 0) ...[
-                const SizedBox(height: 8),
-                Text('Kembalian: ${formatRupiah(transaction.change)}'),
-              ],
-            ],
-          ),
-          actions: [
-            OutlinedButton.icon(
-              onPressed: () {
-                Navigator.of(context).pop();
-                ReceiptPrinter.downloadReceipt(transaction);
-              },
-              icon: const Icon(Icons.download),
-              label: const Text('Download Struk'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () {
-                Navigator.of(context).pop();
-                ReceiptPrinter.printReceipt(transaction);
-              },
-              icon: const Icon(Icons.print),
-              label: const Text('Cetak Struk'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () async {
-                final ctx = context;
-                final done = await sendReceiptToWhatsApp(ctx, transaction);
-                if (done && ctx.mounted) Navigator.of(ctx).pop();
-              },
-              icon: const Icon(Icons.chat),
-              label: const Text('Kirim ke WhatsApp'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Selesai'),
-            ),
-          ],
-        ),
+        builder: (context) => _PaymentSuccessDialog(transaction: transaction),
       );
 
       // Refresh stok produk setelah transaksi
@@ -1202,6 +1154,100 @@ class _PaymentSheetState extends State<_PaymentSheet> {
   }
 }
 
+class _PaymentSuccessDialog extends StatefulWidget {
+  final Transaction transaction;
+
+  const _PaymentSuccessDialog({required this.transaction});
+
+  @override
+  State<_PaymentSuccessDialog> createState() => _PaymentSuccessDialogState();
+}
+
+class _PaymentSuccessDialogState extends State<_PaymentSuccessDialog> {
+  final _phoneController = TextEditingController();
+  bool _isSending = false;
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendToWhatsApp() async {
+    if (_isSending) return;
+    setState(() => _isSending = true);
+    await sendReceiptToWhatsApp(
+      context,
+      transaction: widget.transaction,
+      phone: _phoneController.text,
+    );
+    if (mounted) setState(() => _isSending = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final transaction = widget.transaction;
+
+    return AlertDialog(
+      icon: const Icon(Icons.check_circle, color: Colors.green, size: 56),
+      title: const Text('Transaksi Berhasil'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('No. Invoice: ${transaction.invoiceNumber}'),
+          const SizedBox(height: 8),
+          Text('Total: ${formatRupiah(transaction.total)}'),
+          if (transaction.change > 0) ...[
+            const SizedBox(height: 8),
+            Text('Kembalian: ${formatRupiah(transaction.change)}'),
+          ],
+          const SizedBox(height: 16),
+          TextField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9+\s-]')),
+            ],
+            decoration: const InputDecoration(
+              labelText: 'Nomor WhatsApp Pelanggan',
+              hintText: '08123456789',
+              prefixIcon: Icon(Icons.chat_outlined),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        OutlinedButton.icon(
+          onPressed: () {
+            Navigator.of(context).pop();
+            ReceiptPrinter.downloadReceipt(transaction);
+          },
+          icon: const Icon(Icons.download),
+          label: const Text('Download Struk'),
+        ),
+        OutlinedButton.icon(
+          onPressed: () {
+            Navigator.of(context).pop();
+            ReceiptPrinter.printReceipt(transaction);
+          },
+          icon: const Icon(Icons.print),
+          label: const Text('Cetak Struk'),
+        ),
+        OutlinedButton.icon(
+          onPressed: _isSending ? null : _sendToWhatsApp,
+          icon: const Icon(Icons.send),
+          label: const Text('Kirim ke WhatsApp'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Selesai'),
+        ),
+      ],
+    );
+  }
+}
+
 class _PaymentMethodTile extends StatelessWidget {
   final String method;
   final String label;
@@ -1253,129 +1299,3 @@ class _PaymentMethodTile extends StatelessWidget {
   }
 }
 
-/// Alur "Kirim ke WhatsApp" untuk struk transaksi.
-///
-/// Berdiri sendiri (top-level) karena dipanggil dari dialog "Transaksi
-/// Berhasil" yang menumpuk di atas bottom sheet pembayaran yang sudah
-/// ditutup, sehingga tidak aman bergantung pada State bottom sheet.
-///
-/// 1. Minta nomor WhatsApp pelanggan.
-/// 2. Simpan struk PDF ke folder Downloads (bila tersedia).
-/// 3. Buka chat WhatsApp ke nomor tersebut agar kasir melampirkan PDF.
-///    Bila platform tak punya folder Downloads, tampilkan share sheet.
-///
-/// Mengembalikan `false` saat pengguna membatalkan (dialog sukses sebaiknya
-/// tetap terbuka), dan `true` setelah alur selesai diproses.
-Future<bool> sendReceiptToWhatsApp(
-  BuildContext dialogContext,
-  Transaction transaction,
-) async {
-  final phone = await promptWhatsAppNumber(dialogContext);
-  if (phone == null || phone.isEmpty) return false;
-
-  // Normalisasi nomor: buang spasi/tanda hubung/kurung lalu ubah 0x -> 62x.
-  var digits = phone.replaceAll(RegExp(r'[\s\-().]'), '');
-  if (digits.startsWith('+')) digits = digits.substring(1);
-  if (digits.startsWith('0')) digits = '62${digits.substring(1)}';
-  final waNumber = digits.replaceAll(RegExp(r'[^0-9]'), '');
-  if (waNumber.isEmpty) {
-    if (dialogContext.mounted) {
-      _showSnack(dialogContext, 'Nomor WhatsApp tidak valid');
-    }
-    return false;
-  }
-
-  try {
-    final savedPath =
-        await ReceiptPrinter.saveReceiptPdfToDownloads(transaction);
-
-    // Tak ada folder Downloads: serahkan ke share sheet OS agar kasir bisa
-    // memilih WhatsApp sebagai tujuan berbagi file.
-    if (savedPath == null) {
-      final pdf = await ReceiptPrinter.generateReceiptPdf(transaction);
-      await Printing.sharePdf(
-        bytes: pdf,
-        filename: 'Struk_${transaction.invoiceNumber}.pdf',
-      );
-      return true;
-    }
-
-    final uri = Uri.parse('https://wa.me/$waNumber');
-    if (!await canLaunchUrl(uri)) {
-      if (dialogContext.mounted) {
-        _showSnack(
-          dialogContext,
-          'Struk tersimpan di: $savedPath\n'
-          'Tidak bisa membuka WhatsApp otomatis. Silakan kirim file '
-          'Struk_${transaction.invoiceNumber}.pdf dari folder tersebut.',
-        );
-      }
-      return true;
-    }
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-    return true;
-  } catch (e) {
-    if (dialogContext.mounted) {
-      _showSnack(dialogContext, 'Gagal menyiapkan struk: $e');
-    }
-    return true;
-  }
-}
-
-/// Dialog input nomor WhatsApp pelanggan.
-Future<String?> promptWhatsAppNumber(BuildContext dialogContext) {
-  final controller = TextEditingController();
-  return showDialog<String>(
-    context: dialogContext,
-    builder: (context) => AlertDialog(
-      icon: const Icon(Icons.chat, color: Colors.green),
-      title: const Text('Kirim ke WhatsApp'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Masukkan nomor WhatsApp pelanggan untuk mengirim struk PDF.',
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: controller,
-            autofocus: true,
-            keyboardType: TextInputType.phone,
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9+\s\-()]')),
-            ],
-            decoration: const InputDecoration(
-              labelText: 'Nomor WhatsApp',
-              hintText: '08xx / +62xxx',
-              prefixIcon: Icon(Icons.phone),
-            ),
-            onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Struk akan disimpan ke folder Downloads, lalu WhatsApp dibuka '
-            'ke nomor tersebut. Lampirkan file PDF struk pada chat.',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Batal'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-          child: const Text('Kirim'),
-        ),
-      ],
-    ),
-  );
-}
-
-void _showSnack(BuildContext context, String message) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message)));
-}
