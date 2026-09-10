@@ -14,6 +14,15 @@ import '../utils/receipt_printer.dart';
 import '../theme/app_colors.dart';
 import '../widgets/pos_app_bar_actions.dart';
 
+/// Tarif Pajak Pertambahan Nilai (PPN) yang dikenakan per transaksi.
+const double kPpnRate = 0.10;
+
+/// Besaran PPN dari suatu subtotal (dibulatkan ke rupiah penuh).
+double _ppnOf(double subtotal) => (subtotal * kPpnRate).roundToDouble();
+
+/// Total yang harus dibayar = subtotal + PPN.
+double _totalWithPpn(double subtotal) => subtotal + _ppnOf(subtotal);
+
 class KasirScreen extends StatefulWidget {
   const KasirScreen({super.key});
 
@@ -50,7 +59,7 @@ class _KasirScreenState extends State<KasirScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _PaymentSheet(total: cart.total),
+      builder: (context) => _PaymentSheet(total: _totalWithPpn(cart.total)),
     );
   }
 
@@ -411,21 +420,38 @@ class _ProductCard extends StatelessWidget {
                     Expanded(
                       child: Container(
                         width: double.infinity,
+                        clipBehavior: Clip.antiAlias,
                         decoration: BoxDecoration(
                           color: outOfStock
                               ? AppColors.background
                               : AppColors.primary.withValues(alpha: 0.06),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Center(
-                          child: Icon(
-                            Icons.inventory_2,
-                            size: 42,
-                            color: outOfStock
-                                ? AppColors.textMuted
-                                : AppColors.primary.withValues(alpha: 0.55),
-                          ),
-                        ),
+                        child: product.imageUrl != null
+                            ? Image.network(
+                                product.imageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Center(
+                                  child: Icon(
+                                    Icons.inventory_2,
+                                    size: 42,
+                                    color: outOfStock
+                                        ? AppColors.textMuted
+                                        : AppColors.primary
+                                            .withValues(alpha: 0.55),
+                                  ),
+                                ),
+                              )
+                            : Center(
+                                child: Icon(
+                                  Icons.inventory_2,
+                                  size: 42,
+                                  color: outOfStock
+                                      ? AppColors.textMuted
+                                      : AppColors.primary
+                                          .withValues(alpha: 0.55),
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -543,7 +569,6 @@ class _CartPanel extends StatelessWidget {
   final CartProvider cart;
   final VoidCallback onCheckout;
   final double width;
-  final double taxRate = 0.10;
 
   const _CartPanel({
     required this.cart,
@@ -556,8 +581,8 @@ class _CartPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final subtotal = _subtotal;
-    final tax = subtotal * taxRate;
-    final total = subtotal + tax;
+    final tax = _ppnOf(subtotal);
+    final total = _totalWithPpn(subtotal);
 
     return Container(
       width: width,
@@ -651,7 +676,8 @@ class _CartPanel extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 _SummaryRow(
-                  label: 'Pajak PPN (10%)',
+                  label:
+                      'Pajak PPN (${(kPpnRate * 100).round()}%)',
                   value: formatRupiah(tax),
                 ),
                 Container(

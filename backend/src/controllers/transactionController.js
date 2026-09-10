@@ -8,6 +8,9 @@ const formatRupiah = (n) => {
   return 'Rp' + s.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
+// Tarif Pajak Pertambahan Nilai (PPN)
+const TAX_RATE = 0.10;
+
 // Helper: buat notifikasi untuk kasir pelaku transaksi (tidak menggagalkan transaksi)
 const notifyKasir = async ({ kasirId, notifications }) => {
   try {
@@ -41,7 +44,7 @@ const createTransaction = async (req, res) => {
     // Validasi & siapkan data transaksi
     const txItems = [];
     const lowStockItems = [];
-    let total = 0;
+    let subtotalTotal = 0;
     let totalCost = 0;
 
     for (const item of items) {
@@ -70,7 +73,7 @@ const createTransaction = async (req, res) => {
       }
 
       const subtotal = product.price * item.qty;
-      total += subtotal;
+      subtotalTotal += subtotal;
       totalCost += product.cost * item.qty;
 
       txItems.push({
@@ -94,6 +97,10 @@ const createTransaction = async (req, res) => {
     });
     const invoiceNumber = `TRX-${dateStr}-${String(count + 1).padStart(4, '0')}`;
 
+    // Hitung PPN dan total yang harus dibayar (sudah termasuk pajak)
+    const tax = Math.round(subtotalTotal * TAX_RATE);
+    const total = subtotalTotal + tax;
+
     // Hitung kembalian
     const change = paymentMethod === 'cash' && cashReceived ? cashReceived - total : 0;
     if (change < 0) {
@@ -103,9 +110,11 @@ const createTransaction = async (req, res) => {
     const transaction = await Transaction.create({
       invoiceNumber,
       items: txItems,
+      subtotal: subtotalTotal,
+      tax,
       total,
       totalCost,
-      profit: total - totalCost,
+      profit: subtotalTotal - totalCost,
       paymentMethod: paymentMethod || 'cash',
       cashReceived: paymentMethod === 'cash' ? cashReceived || 0 : 0,
       change,

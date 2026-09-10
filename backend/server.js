@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const connectDB = require('./src/config/db');
 const authRoutes = require('./src/routes/authRoutes');
 const productRoutes = require('./src/routes/productRoutes');
@@ -15,6 +16,9 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// File statis (gambar produk yang diupload)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
 app.get('/', (req, res) => {
@@ -37,7 +41,10 @@ app.use((req, res) => {
 // Error handler umum
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ message: err.message || 'Terjadi kesalahan server' });
+  const status = err.statusCode || (err.name === 'MulterError' ? 400 : 500);
+  res.status(status).json({
+    message: err.message || 'Terjadi kesalahan server',
+  });
 });
 
 const PORT = process.env.PORT || 3000;

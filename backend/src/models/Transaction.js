@@ -27,6 +27,14 @@ const transactionSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    tax: {
+      type: Number,
+      default: 0,
+    },
+    subtotal: {
+      type: Number,
+      default: 0,
+    },
     totalCost: {
       type: Number,
       default: 0,

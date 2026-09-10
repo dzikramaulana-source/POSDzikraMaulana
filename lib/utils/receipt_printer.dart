@@ -106,6 +106,28 @@ class ReceiptPrinter {
           );
         }),
         pw.Divider(),
+        // Rincian pajak (hanya bila transaksi dikenakan PPN)
+        if (transaction.tax > 0) ...[
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('Subtotal', style: baseStyle),
+              pw.Text(
+                formatRupiah(transaction.total - transaction.tax),
+                style: baseStyle,
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 2),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('PPN 10%', style: baseStyle),
+              pw.Text(formatRupiah(transaction.tax), style: baseStyle),
+            ],
+          ),
+          pw.SizedBox(height: 2),
+        ],
         // Total
         pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,

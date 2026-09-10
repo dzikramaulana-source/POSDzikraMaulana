@@ -136,6 +136,12 @@ class _StockCard extends StatelessWidget {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: color.withValues(alpha: 0.1),
+          foregroundImage: product.imageUrl != null
+              ? NetworkImage(product.imageUrl!)
+              : null,
+          onForegroundImageError: product.imageUrl != null
+              ? (_, _) {}
+              : null,
           child: Text(
             product.name.isNotEmpty ? product.name[0].toUpperCase() : '?',
             style: TextStyle(color: color, fontWeight: FontWeight.bold),

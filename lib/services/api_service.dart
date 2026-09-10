@@ -51,7 +51,7 @@ class ApiService {
     final response = await http
         .get(uri, headers: await _headers(withAuth: withAuth))
         .timeout(const Duration(seconds: 15));
-    return _handleResponse(response);
+    return handleResponse(response);
   }
 
   static Future<dynamic> post(String path, Map<String, dynamic> body,
@@ -62,7 +62,7 @@ class ApiService {
             headers: await _headers(withAuth: withAuth),
             body: jsonEncode(body))
         .timeout(const Duration(seconds: 15));
-    return _handleResponse(response);
+    return handleResponse(response);
   }
 
   static Future<dynamic> put(String path, Map<String, dynamic> body,
@@ -73,7 +73,7 @@ class ApiService {
             headers: await _headers(withAuth: withAuth),
             body: jsonEncode(body))
         .timeout(const Duration(seconds: 15));
-    return _handleResponse(response);
+    return handleResponse(response);
   }
 
   static Future<dynamic> patch(String path, Map<String, dynamic> body,
@@ -84,7 +84,7 @@ class ApiService {
             headers: await _headers(withAuth: withAuth),
             body: jsonEncode(body))
         .timeout(const Duration(seconds: 15));
-    return _handleResponse(response);
+    return handleResponse(response);
   }
 
   static Future<dynamic> delete(String path, {bool withAuth = true}) async {
@@ -92,10 +92,10 @@ class ApiService {
     final response = await http
         .delete(uri, headers: await _headers(withAuth: withAuth))
         .timeout(const Duration(seconds: 15));
-    return _handleResponse(response);
+    return handleResponse(response);
   }
 
-  static dynamic _handleResponse(http.Response response) {
+  static dynamic handleResponse(http.Response response) {
     dynamic data;
     try {
       data = jsonDecode(response.body);

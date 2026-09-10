@@ -1,3 +1,5 @@
+import '../config/api_config.dart';
+
 /// Status ketersediaan stok produk
 enum StockStatus { available, low, out }
 
@@ -9,6 +11,7 @@ class Product {
   final double cost;
   final int stock;
   final String category;
+  final String image;
 
   Product({
     required this.id,
@@ -18,6 +21,7 @@ class Product {
     required this.cost,
     required this.stock,
     required this.category,
+    this.image = '',
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -29,6 +33,7 @@ class Product {
       cost: (json['cost'] as num?)?.toDouble() ?? 0,
       stock: (json['stock'] as num?)?.toInt() ?? 0,
       category: json['category']?.toString() ?? 'Umum',
+      image: json['image']?.toString() ?? '',
     );
   }
 
@@ -39,6 +44,7 @@ class Product {
         'cost': cost,
         'stock': stock,
         'category': category,
+        'image': image,
       };
 
   Product copyWith({int? stock}) {
@@ -50,7 +56,15 @@ class Product {
       cost: cost,
       stock: stock ?? this.stock,
       category: category,
+      image: image,
     );
+  }
+
+  /// URL absolut gambar produk (jika ada), untuk Image.network.
+  String? get imageUrl {
+    if (image.isEmpty) return null;
+    if (image.startsWith('http')) return image;
+    return '${ApiConfig.baseUrl}$image';
   }
 
   /// Status ketersediaan stok: habis (0), menipis (1–10), tersedia (>10)

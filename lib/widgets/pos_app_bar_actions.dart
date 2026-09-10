@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/notification_provider.dart';
 import '../screens/notification_screen.dart';
+import 'pos_profile_chip.dart';
 
 /// Aksi global di pojok kanan atas setiap layar menu:
-/// tombol Notifikasi (dengan badge jumlah belum dibaca) dan Logout.
+/// tombol Notifikasi (dengan badge jumlah belum dibaca), tombol Logout, dan
+/// bagian profil pengguna (avatar, nama, role) sebagai info saja.
 class PosAppBarActions extends StatelessWidget {
   const PosAppBarActions({super.key});
 
@@ -41,6 +43,7 @@ class PosAppBarActions extends StatelessWidget {
           tooltip: 'Logout',
           onPressed: () => _logout(context),
         ),
+        const PosProfileChip(),
       ],
     );
   }

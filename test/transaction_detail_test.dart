@@ -19,6 +19,7 @@ void main() {
         TransactionItem(name: 'Kopi Hitam', price: 10000, qty: 2, subtotal: 20000),
       ],
       total: 20000,
+      tax: 0,
       profit: 10000,
       paymentMethod: 'cash',
       cashReceived: 50000,

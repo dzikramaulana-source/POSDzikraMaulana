@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
 import '../theme/app_colors.dart';
 
 /// Item navigasi sidebar.
@@ -21,8 +19,8 @@ class PosSidebarItem {
 /// Sidebar navigasi utama POS.
 ///
 /// Menampilkan menu sesuai peran yang sedang login (admin vs kasir) di panel
-/// kiri, lengkap dengan header berupa identitas pengguna. Menyusut menjadi
-/// mode "compact" (ikon saja) saat lebar layar sempit agar tetap ringkas.
+/// kiri, dengan branding POS di bagian atas. Menyusut menjadi mode "compact"
+/// (ikon saja) saat lebar layar sempit agar tetap ringkas.
 class PosSidebar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelected;
@@ -36,73 +34,32 @@ class PosSidebar extends StatelessWidget {
   });
 
   Widget _buildHeader(BuildContext context) {
-    final user = context.watch<AuthProvider>().user;
-    final name = user?.name ?? 'Pengguna';
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          // Branding: ikon POS + judul + subjudul
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Icon(Icons.point_of_sale, size: 30, color: AppColors.primary),
+          const SizedBox(width: 8),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.point_of_sale, size: 30, color: AppColors.primary),
-              const SizedBox(width: 8),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'POS Kasir',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                  Text(
-                    'Panel Penjualan Cepat',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ],
+              Text(
+                'POS Kasir',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: AppColors.textDark,
+                ),
+              ),
+              Text(
+                'Panel Penjualan Cepat',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                ),
               ),
             ],
-          ),
-          const SizedBox(height: 12),
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-            child: Text(
-              initial,
-              style: const TextStyle(
-                fontSize: 18,
-                color: AppColors.primary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: AppColors.textDark,
-            ),
-          ),
-          Text(
-            user?.role ?? '',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textMuted,
-            ),
           ),
         ],
       ),

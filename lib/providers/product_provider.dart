@@ -42,6 +42,8 @@ class ProductProvider extends ChangeNotifier {
     required double cost,
     required int stock,
     required String category,
+    Uint8List? imageBytes,
+    String? imageName,
   }) async {
     try {
       await ProductService.createProduct(
@@ -51,6 +53,8 @@ class ProductProvider extends ChangeNotifier {
         cost: cost,
         stock: stock,
         category: category,
+        imageBytes: imageBytes,
+        imageName: imageName,
       );
       await loadProducts();
       return true;
@@ -69,6 +73,9 @@ class ProductProvider extends ChangeNotifier {
     required double cost,
     required int stock,
     required String category,
+    String? image,
+    Uint8List? imageBytes,
+    String? imageName,
   }) async {
     try {
       await ProductService.updateProduct(
@@ -79,6 +86,9 @@ class ProductProvider extends ChangeNotifier {
         cost: cost,
         stock: stock,
         category: category,
+        image: image ?? product.image,
+        imageBytes: imageBytes,
+        imageName: imageName,
       );
       await loadProducts();
       return true;

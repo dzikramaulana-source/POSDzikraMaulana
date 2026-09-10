@@ -34,6 +34,10 @@ const productSchema = new mongoose.Schema(
       trim: true,
       default: 'Umum',
     },
+    image: {
+      type: String,
+      default: '',
+    },
   },
   {
     timestamps: true,

@@ -7,6 +7,7 @@ const {
   deleteProduct,
 } = require('../controllers/productController');
 const { protect, authorize } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -14,11 +15,11 @@ const router = express.Router();
 router
   .route('/')
   .get(protect, getProducts)
-  .post(protect, authorize('admin'), createProduct);
+  .post(protect, authorize('admin'), upload.single('image'), createProduct);
 router
   .route('/:id')
   .get(protect, getProductById)
-  .put(protect, authorize('admin'), updateProduct)
+  .put(protect, authorize('admin'), upload.single('image'), updateProduct)
   .delete(protect, authorize('admin'), deleteProduct);
 
 module.exports = router;

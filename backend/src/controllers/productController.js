@@ -1,5 +1,13 @@
 const Product = require('../models/Product');
 
+// Path gambar yang disimpan server (mis. /uploads/products/x.png)
+const storedImage = (req, fallback) => {
+  if (req.file) {
+    return `/uploads/products/${req.file.filename}`;
+  }
+  return fallback;
+};
+
 // @desc    Get all products (dengan pencarian opsional)
 // @route   GET /api/products?search=&category=
 // @access  Private
@@ -63,6 +71,7 @@ const createProduct = async (req, res) => {
       cost: cost || 0,
       stock: stock || 0,
       category: category || 'Umum',
+      image: storedImage(req, ''),
     });
 
     res.status(201).json({ message: 'Produk berhasil ditambahkan', product });
@@ -100,6 +109,12 @@ const updateProduct = async (req, res) => {
     product.cost = cost !== undefined ? cost : product.cost;
     product.stock = stock !== undefined ? stock : product.stock;
     product.category = category || product.category;
+    product.image =
+      req.file != null
+        ? `/uploads/products/${req.file.filename}`
+        : req.body.image !== undefined
+          ? req.body.image
+          : product.image;
 
     await product.save();
     res.json({ message: 'Produk berhasil diperbarui', product });
