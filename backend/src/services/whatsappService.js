@@ -3,8 +3,12 @@ const QRCode = require('qrcode');
 const QRCodeTerminal = require('qrcode-terminal');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 
-// Folder penyimpanan sesi WhatsApp (login tersimpan di sini).
+// Folder penyimpanan sesi WhatsApp (login tersimpan di sini, gitignored).
 const SESSION_PATH = path.join(__dirname, '..', '..', '.wwebjs_auth');
+
+// Jeda dasar penyambungan ulang otomatis saat koneksi terputus (ms).
+const RECONNECT_BASE_DELAY_MS = 5000;
+const RECONNECT_MAX_DELAY_MS = 60000;
 
 // Status yang mungkin:
 // 'disconnected' | 'initializing' | 'qr' | 'authenticated' | 'connected' | 'auth_failure'
@@ -14,6 +18,14 @@ let qrDataUrl = null;
 let account = null;
 let lastError = null;
 
+// true saat logout/shutdown diminta, agar tidak memicu reconnect otomatis.
+let stopped = false;
+// Timer & hitungan percobaan reconnect otomatis.
+let reconnectTimer = null;
+let reconnectAttempts = 0;
+// Promise initialize yang sedang berjalan, agar dua browser tidak memakai profil sesi yang sama.
+let initializingPromise = null;
+
 // Buat instance client beserta event handler-nya.
 const buildClient = () => {
   const instance = new Client({
@@ -21,6 +33,11 @@ const buildClient = () => {
     puppeteer: {
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      // Penanganan sinyal diatur sendiri (lihat shutdown) supaya browser
+      // selalu ditutup dengan rapi dan sesi LocalAuth ikut tersimpan.
+      handleSIGINT: false,
+      handleSIGTERM: false,
+      handleSIGHUP: false,
     },
   });
 
@@ -51,6 +68,11 @@ const buildClient = () => {
     status = 'connected';
     qrDataUrl = null;
     lastError = null;
+    reconnectAttempts = 0;
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
     const info = instance.info;
     account = info
       ? {
@@ -71,36 +93,77 @@ const buildClient = () => {
     console.error('WhatsApp auth gagal:', lastError);
   });
 
-  instance.on('disconnected', (reason) => {
+  instance.on('disconnected', async (reason) => {
     status = 'disconnected';
     qrDataUrl = null;
     account = null;
-    client = null;
     lastError = `Terputus: ${reason}`;
     console.warn('WhatsApp terputus:', reason);
+
+    if (client === instance) client = null;
+    // Tutup browser lama agar profil LocalAuth tidak tetap terkunci,
+    // sehingga penyambungan berikutnya bisa memakai sesi yang sama.
+    try {
+      await instance.destroy();
+    } catch (error) {
+      lastError = error.message;
+    }
+    scheduleReconnect();
   });
 
   instance.on('loading_screen', () => {
-    if (status !== 'qr') status = 'initializing';
+    // WhatsApp Web memicu loading_screen lagi saat sinkronisasi setelah login.
+    // Status yang sudah tersambung/otentikasi tidak boleh diturunkan, kalau tidak
+    // sesi yang berhasil dipulihkan akan terlihat "belum terhubung".
+    if (status === 'connected' || status === 'authenticated' || status === 'qr') return;
+    status = 'initializing';
   });
 
   return instance;
 };
 
-// Mulai client WhatsApp (lazy: dipicu oleh endpoint, bukan saat boot server).
+// Jadwalkan penyambungan ulang otomatis setelah koneksi terputus.
+const scheduleReconnect = () => {
+  if (stopped || reconnectTimer) return;
+  const delay = Math.min(
+    RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempts,
+    RECONNECT_MAX_DELAY_MS
+  );
+  reconnectAttempts += 1;
+  console.log(`WhatsApp: menyambung ulang otomatis dalam ${Math.round(delay / 1000)} detik...`);
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    if (!stopped && !client) initialize();
+  }, delay);
+};
+
+// Mulai client WhatsApp. Sesi login dipulihkan otomatis dari LocalAuth
+// (tanpa scan QR) selama folder .wwebjs_auth masih ada.
 const initialize = () => {
-  if (client) return client;
+  if (client || initializingPromise) return client;
+
+  stopped = false;
   status = 'initializing';
   qrDataUrl = null;
   lastError = null;
-  client = buildClient();
-  client.initialize().catch((error) => {
-    status = 'disconnected';
-    lastError = error.message;
-    client = null;
-    console.error('WhatsApp gagal dijalankan:', error.message);
-  });
-  return client;
+
+  const instance = buildClient();
+  client = instance;
+
+  initializingPromise = instance
+    .initialize()
+    .catch((error) => {
+      if (client === instance) client = null;
+      status = 'disconnected';
+      lastError = error.message;
+      console.error('WhatsApp gagal dijalankan:', error.message);
+      scheduleReconnect();
+    })
+    .finally(() => {
+      initializingPromise = null;
+    });
+
+  return instance;
 };
 
 // Ringkasan status koneksi untuk endpoint.
@@ -113,9 +176,20 @@ const getStatus = () => ({
   lastError,
 });
 
+// Hentikan timer reconnect yang sedang menunggu.
+const clearReconnectTimer = () => {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+};
+
 // Putuskan koneksi dan hapus sesi agar bisa pairing ulang.
 const logout = async () => {
   const current = client;
+  stopped = true;
+  clearReconnectTimer();
+  reconnectAttempts = 0;
   client = null;
   status = 'disconnected';
   qrDataUrl = null;
@@ -126,6 +200,21 @@ const logout = async () => {
   } catch (error) {
     lastError = error.message;
   }
+  try {
+    await current.destroy();
+  } catch (error) {
+    lastError = error.message;
+  }
+};
+
+// Tutup browser dengan rapi saat server berhenti, TANPA menghapus sesi,
+// supaya sesi LocalAuth tersimpan dan bisa dipakai lagi saat server dinyalakan.
+const shutdown = async () => {
+  stopped = true;
+  clearReconnectTimer();
+  const current = client;
+  client = null;
+  if (!current) return;
   try {
     await current.destroy();
   } catch (error) {
@@ -197,6 +286,7 @@ const sendDocument = async (phone, filePath, options = {}) => {
 
 module.exports = {
   initialize,
+  shutdown,
   getStatus,
   logout,
   restart,

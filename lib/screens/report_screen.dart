@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/report.dart';
 import '../providers/report_provider.dart';
+import '../theme/app_colors.dart';
 import '../utils/formatter.dart';
 import '../utils/payment_method.dart';
 import '../widgets/pos_app_bar_actions.dart';
@@ -54,7 +55,10 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   void initState() {
     super.initState();
-    _applyPeriod(ReportPeriod.today);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _applyPeriod(ReportPeriod.today);
+    });
   }
 
   Future<void> _applyPeriod(ReportPeriod period) async {
@@ -249,34 +253,34 @@ class _ReportScreenState extends State<ReportScreen> {
     final summary = report.summary;
     final items = <_SummaryCardData>[
       _SummaryCardData(
-        icon: Icons.payments,
+        icon: Icons.payments_rounded,
         label: 'Total Penjualan',
         value: formatRupiah(summary.totalRevenue),
-        color: Colors.green,
+        color: AppColors.success,
       ),
       _SummaryCardData(
-        icon: Icons.savings,
-        label: 'Modal',
+        icon: Icons.savings_rounded,
+        label: 'Total Modal',
         value: formatRupiah(summary.totalCost),
-        color: Colors.orange,
+        color: AppColors.warning,
       ),
       _SummaryCardData(
-        icon: Icons.account_balance_wallet,
-        label: 'Laba',
+        icon: Icons.account_balance_wallet_rounded,
+        label: 'Total Laba',
         value: formatRupiah(summary.totalProfit),
-        color: Colors.teal,
+        color: AppColors.primary,
       ),
       _SummaryCardData(
-        icon: Icons.percent,
-        label: 'Margin',
+        icon: Icons.percent_rounded,
+        label: 'Margin Rata-rata',
         value: '${summary.margin.toStringAsFixed(1)}%',
-        color: Colors.brown,
+        color: const Color(0xFF8B5CF6),
       ),
       _SummaryCardData(
-        icon: Icons.receipt_long,
-        label: 'Transaksi',
+        icon: Icons.receipt_long_rounded,
+        label: 'Total Transaksi',
         value: formatNumber(summary.totalTransactions),
-        color: Colors.blue,
+        color: AppColors.accent,
       ),
     ];
 
@@ -284,7 +288,7 @@ class _ReportScreenState extends State<ReportScreen> {
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         final cols = width >= 900
-            ? 4
+            ? 5
             : width >= 600
                 ? 3
                 : 2;
@@ -317,61 +321,81 @@ class _ReportScreenState extends State<ReportScreen> {
     final delta = current - previous;
     final percent = previous > 0 ? (delta / previous) * 100 : (current > 0 ? 100.0 : 0.0);
     final isUp = delta >= 0;
-    final color = isUp ? Colors.green : Colors.red;
+    final color = isUp ? AppColors.success : AppColors.danger;
+    final bgColor = isUp ? AppColors.successLight : AppColors.dangerLight;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Perbandingan Periode Sebelumnya',
-                style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _comparisonItem(
-                    'Periode Ini',
-                    formatRupiah(current),
-                    Colors.teal,
-                  ),
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Perbandingan Periode Sebelumnya',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
                 ),
-                Expanded(
-                  child: _comparisonItem(
-                    'Periode Lalu',
-                    formatRupiah(previous),
-                    Colors.grey[600]!,
-                  ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(20),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(isUp ? Icons.arrow_upward : Icons.arrow_downward,
-                    color: color, size: 20),
-                const SizedBox(width: 6),
-                Text(
-                  '${isUp ? '+' : ''}${percent.toStringAsFixed(1)}%',
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isUp ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                      color: color,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${isUp ? '+' : ''}${percent.toStringAsFixed(1)}%',
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  'dari periode sebelumnya',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: Colors.grey[600]),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _comparisonItem(
+                  'Periode Ini',
+                  formatRupiah(current),
+                  AppColors.primary,
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+              Container(width: 1, height: 36, color: AppColors.borderLight),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _comparisonItem(
+                  'Periode Sebelumnya',
+                  formatRupiah(previous),
+                  AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -380,16 +404,15 @@ class _ReportScreenState extends State<ReportScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: Colors.grey[600])),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
         const SizedBox(height: 4),
         Text(
           value,
           style: TextStyle(
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w800,
             fontSize: 16,
             color: color,
           ),
@@ -403,7 +426,7 @@ class _ReportScreenState extends State<ReportScreen> {
   Widget _buildTopProductsAndPayment(PeriodReport report) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 700;
+        final wide = constraints.maxWidth >= 750;
         final topProducts = _buildTopProducts(report.topProducts);
         final payment = _buildPaymentSection(report.paymentSummary);
 
@@ -430,93 +453,256 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Widget _buildTopProducts(List<TopSellingProduct> products) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionTitle(context, 'Produk Terlaris'),
-        const SizedBox(height: 8),
-        if (products.isEmpty)
-          const _EmptyCard(message: 'Belum ada penjualan pada periode ini')
-        else
-          Card(
-            child: Column(
-              children: List.generate(products.length, (index) {
-                final p = products[index];
-                return ListTile(
-                  dense: true,
-                  leading: CircleAvatar(
-                    radius: 14,
-                    child: Text('${index + 1}',
-                        style: const TextStyle(fontSize: 12)),
-                  ),
-                  title: Text(p.name,
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text('${formatNumber(p.qty)} terjual'),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        formatRupiah(p.revenue),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        'Laba ${formatRupiah(p.profit)}',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-            ),
+    final maxQty = products.isEmpty
+        ? 1
+        : products.fold<int>(1, (max, p) => p.qty > max ? p.qty : max);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.warningLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.leaderboard_rounded, size: 18, color: AppColors.warning),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Produk Terlaris',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
           ),
-      ],
+          const SizedBox(height: 16),
+          if (products.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text('Belum ada penjualan pada periode ini',
+                    style: TextStyle(color: AppColors.textSecondary)),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: products.length,
+              separatorBuilder: (_, _) =>
+                  const Divider(height: 18, color: AppColors.borderLight),
+              itemBuilder: (context, index) {
+                final p = products[index];
+                final share = (p.qty / maxQty).clamp(0.0, 1.0);
+                final rankBadge = index == 0
+                    ? '🥇'
+                    : index == 1
+                        ? '🥈'
+                        : index == 2
+                            ? '🥉'
+                            : '#${index + 1}';
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: index < 3
+                                ? AppColors.surfaceVariant
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            rankBadge,
+                            style: TextStyle(
+                              fontSize: index < 3 ? 15 : 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                p.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  color: AppColors.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${formatNumber(p.qty)} terjual • Laba ${formatRupiah(p.profit)}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          formatRupiah(p.revenue),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: share,
+                        minHeight: 5,
+                        backgroundColor: AppColors.surfaceVariant,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          index == 0 ? AppColors.primary : AppColors.primaryLight,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
     );
   }
 
   Widget _buildPaymentSection(List<PaymentMethodSummary> payment) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionTitle(context, 'Metode Pembayaran'),
-        const SizedBox(height: 8),
-        if (payment.isEmpty)
-          const _EmptyCard(message: 'Belum ada data pembayaran')
-        else
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: 150,
-                    child: _PaymentPieChart(payment: payment),
-                  ),
-                  const SizedBox(height: 12),
-                  ...payment.map((p) {
-                    return ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.pie_chart_rounded, size: 18, color: AppColors.primary),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Metode Pembayaran',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (payment.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text('Belum ada data pembayaran',
+                    style: TextStyle(color: AppColors.textSecondary)),
+              ),
+            )
+          else ...[
+            SizedBox(
+              height: 150,
+              child: _PaymentPieChart(payment: payment),
+            ),
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: AppColors.borderLight),
+            const SizedBox(height: 8),
+            ...payment.map((p) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: _paymentColor(p.method).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
                         _paymentIcon(p.method),
+                        size: 18,
                         color: _paymentColor(p.method),
                       ),
-                      title: Text(_paymentLabel(p.method)),
-                      subtitle: Text('${formatNumber(p.count)} transaksi'),
-                      trailing: Text(
-                        formatRupiah(p.total),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _paymentLabel(p.method),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            '${formatNumber(p.count)} transaksi',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-          ),
-      ],
+                    ),
+                    Text(
+                      formatRupiah(p.total),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
     );
   }
 
@@ -570,34 +756,49 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 26),
-            const SizedBox(height: 10),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: Colors.grey[600]),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.3,
             ),
-          ],
-        ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
@@ -610,11 +811,18 @@ class _EmptyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(message,
-            style: TextStyle(color: Colors.grey[600])),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Center(
+        child: Text(
+          message,
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
       ),
     );
   }
@@ -639,115 +847,122 @@ class _SalesChartCard extends StatelessWidget {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final narrow = constraints.maxWidth < 480;
-            final labelWidth = narrow ? 100.0 : 150.0;
-            final amountStyle = TextStyle(
-              fontSize: narrow ? 10 : 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.teal.shade800,
-            );
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final narrow = constraints.maxWidth < 480;
+          final labelWidth = narrow ? 100.0 : 150.0;
+          const amountStyle = TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          );
 
-            return ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 360),
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: points.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final point = points[index];
-                  final date = DateTime.tryParse(point.label);
-                  final dateText = date != null
-                      ? DateFormat('dd/MM/yyyy').format(date)
-                      : point.label;
+          return ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 360),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: points.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final point = points[index];
+                final date = DateTime.tryParse(point.label);
+                final dateText = date != null
+                    ? DateFormat('dd/MM/yyyy').format(date)
+                    : point.label;
 
-                  final String relLabel;
-                  if (date == null) {
-                    relLabel = point.label;
+                final String relLabel;
+                if (date == null) {
+                  relLabel = point.label;
+                } else {
+                  final daysAgo = today
+                      .difference(DateTime(date.year, date.month, date.day))
+                      .inDays;
+                  if (daysAgo <= 0) {
+                    relLabel = 'Hari Ini';
+                  } else if (daysAgo == 1) {
+                    relLabel = 'Kemarin';
                   } else {
-                    final daysAgo = today
-                        .difference(DateTime(date.year, date.month, date.day))
-                        .inDays;
-                    if (daysAgo <= 0) {
-                      relLabel = 'Hari Ini';
-                    } else if (daysAgo == 1) {
-                      relLabel = 'Kemarin';
-                    } else {
-                      relLabel = '$daysAgo Hari Lalu';
-                    }
+                    relLabel = '$daysAgo Hari Lalu';
                   }
+                }
 
-                  final ratio = maxTotal > 0 ? point.total / maxTotal : 0.0;
+                final ratio = maxTotal > 0 ? (point.total / maxTotal).clamp(0.0, 1.0) : 0.0;
 
-                  return Row(
-                    children: [
-                      SizedBox(
-                        width: labelWidth,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              relLabel,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                return Row(
+                  children: [
+                    SizedBox(
+                      width: labelWidth,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            relLabel,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
                             ),
-                            Text(
-                              dateText,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[600],
-                              ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            dateText,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                height: 22,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade200,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                alignment: Alignment.centerLeft,
-                                child: FractionallySizedBox(
-                                  widthFactor: ratio,
-                                  heightFactor: 1,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.teal,
-                                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceVariant,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              alignment: Alignment.centerLeft,
+                              child: FractionallySizedBox(
+                                widthFactor: ratio,
+                                heightFactor: 1,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [AppColors.primary, AppColors.primaryLight],
                                     ),
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              formatRupiah(point.total),
-                              style: amountStyle,
-                            ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            formatRupiah(point.total),
+                            style: amountStyle,
+                          ),
+                        ],
                       ),
-                    ],
-                  );
-                },
-              ),
-            );
-          },
-        ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          );
+        },
       ),
     );
   }

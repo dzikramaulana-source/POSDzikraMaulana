@@ -9,6 +9,7 @@ import '../models/user.dart';
 import '../providers/auth_provider.dart';
 import '../providers/transaction_history_provider.dart';
 import '../services/user_service.dart';
+import '../theme/app_colors.dart';
 import '../utils/formatter.dart';
 import '../utils/payment_method.dart';
 import '../widgets/pos_app_bar_actions.dart';
@@ -443,45 +444,84 @@ class _TransactionTile extends StatelessWidget {
     final itemCount = transaction.items.fold<int>(0, (sum, i) => sum + i.qty);
     final method = transaction.paymentMethod;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      clipBehavior: Clip.antiAlias,
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: AppColors.cardShadow,
+      ),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: paymentColor(method).withValues(alpha: 0.12),
-          child: Icon(paymentIcon(method),
-              color: paymentColor(method), size: 22),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: paymentColor(method).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            paymentIcon(method),
+            color: paymentColor(method),
+            size: 22,
+          ),
         ),
-        title: Text(
-          transaction.invoiceNumber,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            const SizedBox(height: 2),
-            Text(
-              '${DateFormat('dd MMM yyyy • HH:mm', 'id_ID').format(transaction.createdAt)}'
-              '${transaction.createdByName.isNotEmpty ? ' • ${transaction.createdByName}' : ''}',
+            Expanded(
+              child: Text(
+                transaction.invoiceNumber,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            const SizedBox(height: 2),
-            Text(
-              '${paymentLabel(method)} • ${formatNumber(itemCount)} item',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: paymentColor(method).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                paymentLabel(method),
+                style: TextStyle(
+                  color: paymentColor(method),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                ),
+              ),
             ),
           ],
         ),
-        isThreeLine: true,
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            '${DateFormat('dd MMM yyyy • HH:mm', 'id_ID').format(transaction.createdAt)}'
+            '${transaction.createdByName.isNotEmpty ? ' • ${transaction.createdByName}' : ''}'
+            ' • ${formatNumber(itemCount)} item',
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               formatRupiah(transaction.total),
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
             ),
-            const SizedBox(height: 2),
-            const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textMuted),
           ],
         ),
         onTap: () => _openDetail(context),

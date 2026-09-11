@@ -11,19 +11,11 @@ String _roleLabel(String? role) {
     case 'kasir':
       return 'Kasir';
     default:
-      return role ?? '';
+      return role ?? 'Pengguna';
   }
 }
 
-/// Warna aksen per peran (dipakai untuk avatar & teks role).
-Color _roleColor(String? role) {
-  return role == 'admin' ? AppColors.primary : const Color(0xFF0D9488);
-}
-
-/// Bagian profil pengguna di pojok kanan atas (hanya tampilan).
-///
-/// Menampilkan avatar (inisial), nama pengguna, dan role. Tanpa ikon maupun
-/// menu dropdown — murni informasi identitas pengguna yang sedang login.
+/// Bagian profil pengguna di pojok kanan atas dengan desain modern.
 class PosProfileChip extends StatelessWidget {
   const PosProfileChip({super.key});
 
@@ -33,38 +25,74 @@ class PosProfileChip extends StatelessWidget {
     final name = user?.name ?? 'Pengguna';
     final role = _roleLabel(user?.role);
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-    final color = _roleColor(user?.role);
+    final isAdmin = user?.role == 'admin';
 
-    // Sembunyikan teks (nama & role) di layar sempit agar tidak overflow.
+    final badgeBg = isAdmin ? AppColors.primaryLight : AppColors.successLight;
+    final badgeTextColor = isAdmin ? AppColors.primary : AppColors.success;
+
     final showText = MediaQuery.sizeOf(context).width >= 820;
 
     return Container(
-      // Margin atas & bawah simetris agar chip sejajar (di tengah) dengan
-      // ikon notifikasi/logout di kanan atas; kanan diberi jarak lebih lega.
-      margin: const EdgeInsets.only(left: 4, top: 4, bottom: 4, right: 12),
-      padding: const EdgeInsets.fromLTRB(6, 4, 10, 4),
+      margin: const EdgeInsets.only(left: 6, top: 4, bottom: 4, right: 12),
+      padding: EdgeInsets.fromLTRB(showText ? 8 : 4, 4, showText ? 12 : 4, 4),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060F172A),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircleAvatar(
-            radius: showText ? 14 : 12,
-            backgroundColor: color.withValues(alpha: 0.12),
-            child: Text(
-              initial,
-              style: TextStyle(
-                fontSize: showText ? 12 : 11,
-                fontWeight: FontWeight.bold,
-                color: color,
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isAdmin
+                        ? [const Color(0xFF3B82F6), const Color(0xFF1D4ED8)]
+                        : [const Color(0xFF10B981), const Color(0xFF047857)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
               ),
-            ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(
+                    color: AppColors.success,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                ),
+              ),
+            ],
           ),
           if (showText) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: 9),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 130),
               child: Column(
@@ -77,17 +105,24 @@ class PosProfileChip extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.textDark,
                     ),
                   ),
-                  Text(
-                    role,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 10.5,
-                      color: AppColors.textMuted,
+                  const SizedBox(height: 1),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: badgeBg,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      role,
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: badgeTextColor,
+                      ),
                     ),
                   ),
                 ],

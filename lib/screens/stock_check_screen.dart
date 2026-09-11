@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/product_provider.dart';
+import '../theme/app_colors.dart';
 import '../utils/formatter.dart';
 import '../widgets/pos_app_bar_actions.dart';
 
@@ -124,50 +125,122 @@ class _StockCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = product.stockStatus;
-    final (label, color, icon) = switch (status) {
-      StockStatus.available => ('Tersedia', Colors.green, Icons.check_circle),
-      StockStatus.low => ('Menipis', Colors.orange, Icons.warning_amber),
-      StockStatus.out => ('Habis', Colors.red, Icons.cancel),
+    final (label, color, bgColor, icon) = switch (status) {
+      StockStatus.available => ('Tersedia', AppColors.success, AppColors.successLight, Icons.check_circle_rounded),
+      StockStatus.low => ('Menipis', AppColors.warning, AppColors.warningLight, Icons.warning_amber_rounded),
+      StockStatus.out => ('Habis', AppColors.danger, AppColors.dangerLight, Icons.cancel_rounded),
     };
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      clipBehavior: Clip.antiAlias,
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: AppColors.cardShadow,
+      ),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withValues(alpha: 0.1),
-          foregroundImage: product.imageUrl != null
-              ? NetworkImage(product.imageUrl!)
-              : null,
-          onForegroundImageError: product.imageUrl != null
-              ? (_, _) {}
-              : null,
-          child: Text(
-            product.name.isNotEmpty ? product.name[0].toUpperCase() : '?',
-            style: TextStyle(color: color, fontWeight: FontWeight.bold),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            image: product.imageUrl != null
+                ? DecorationImage(
+                    image: NetworkImage(product.imageUrl!),
+                    fit: BoxFit.cover,
+                  )
+                : null,
           ),
+          child: product.imageUrl == null
+              ? Center(
+                  child: Text(
+                    product.name.isNotEmpty ? product.name[0].toUpperCase() : '?',
+                    style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                )
+              : null,
         ),
-        title: Text(product.name),
-        subtitle: Text(
-          '${product.sku} • ${product.category}\n'
-          'Stok: ${product.stock} • Harga: ${formatRupiah(product.price.toInt())}',
-        ),
-        isThreeLine: true,
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
+        title: Row(
           children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
+            Expanded(
+              child: Text(
+                product.name,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: color, size: 12),
+                  const SizedBox(width: 4),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  product.sku,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '• ${product.category}',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const Spacer(),
+              Text(
+                'Sisa: ${product.stock} pcs',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+        trailing: Text(
+          formatRupiah(product.price.toInt()),
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+            color: AppColors.textPrimary,
+          ),
         ),
       ),
     );

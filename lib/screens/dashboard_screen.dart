@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/auth_provider.dart';
 import '../providers/product_provider.dart';
+import '../theme/app_colors.dart';
 import '../utils/formatter.dart';
 import '../widgets/pos_app_bar_actions.dart';
 import '../widgets/pos_sidebar.dart';
@@ -147,7 +148,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-/// Halaman Manajemen Produk admin: pencarian & daftar produk.
+/// Halaman Manajemen Produk admin: pencarian & daftar produk dengan ringkasan KPI.
 class _ProductHomePage extends StatefulWidget {
   const _ProductHomePage();
 
@@ -157,6 +158,7 @@ class _ProductHomePage extends StatefulWidget {
 
 class _ProductHomePageState extends State<_ProductHomePage> {
   final _searchController = TextEditingController();
+  String _stockFilter = 'Semua';
 
   @override
   void initState() {
@@ -200,139 +202,396 @@ class _ProductHomePageState extends State<_ProductHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Manajemen Produk'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Tambah Produk',
+          FilledButton.icon(
             onPressed: _addProduct,
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text('Tambah Produk'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            ),
           ),
+          const SizedBox(width: 8),
           const PosAppBarActions(),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: _buildBody(context),
-      ),
+      body: _buildBody(context),
     );
   }
 
   Widget _buildBody(BuildContext context) {
     final productProvider = context.watch<ProductProvider>();
+    final products = productProvider.products;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        TextField(
-          controller: _searchController,
-          onChanged: _search,
-          decoration: InputDecoration(
-            hintText: 'Cari nama / SKU produk...',
-            prefixIcon: const Icon(Icons.search),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            suffixIcon: _searchController.text.isEmpty
-                ? null
-                : IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      _searchController.clear();
-                      _search('');
-                    },
+    // Filter lokal berdasarkan status stok
+    final filtered = products.where((p) {
+      if (_stockFilter == 'Stok Tersedia') return p.stock > 5;
+      if (_stockFilter == 'Stok Menipis') return p.stock > 0 && p.stock <= 5;
+      if (_stockFilter == 'Stok Habis') return p.stock <= 0;
+      return true;
+    }).toList();
+
+    // Hitung KPI
+    final totalProducts = products.length;
+    final totalAssetValue = products.fold<double>(0, (sum, p) => sum + (p.price * p.stock));
+    final lowStockCount = products.where((p) => p.stock > 0 && p.stock <= 5).length;
+    final outOfStockCount = products.where((p) => p.stock <= 0).length;
+
+    return RefreshIndicator(
+      onRefresh: () => productProvider.loadProducts(),
+      child: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          // KPI Metric Cards
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final cols = width >= 900 ? 4 : (width >= 600 ? 2 : 1);
+              const spacing = 12.0;
+              final cardWidth = (width - spacing * (cols - 1)) / cols;
+
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: [
+                  _buildKpiCard(
+                    width: cardWidth,
+                    icon: Icons.inventory_2_rounded,
+                    color: AppColors.primary,
+                    bgColor: AppColors.primaryLight,
+                    title: 'Total Produk',
+                    value: '$totalProducts SKU',
                   ),
+                  _buildKpiCard(
+                    width: cardWidth,
+                    icon: Icons.account_balance_wallet_rounded,
+                    color: AppColors.success,
+                    bgColor: AppColors.successLight,
+                    title: 'Nilai Aset Stok',
+                    value: formatRupiah(totalAssetValue),
+                  ),
+                  _buildKpiCard(
+                    width: cardWidth,
+                    icon: Icons.warning_amber_rounded,
+                    color: AppColors.warning,
+                    bgColor: AppColors.warningLight,
+                    title: 'Stok Menipis',
+                    value: '$lowStockCount Produk',
+                  ),
+                  _buildKpiCard(
+                    width: cardWidth,
+                    icon: Icons.remove_circle_outline_rounded,
+                    color: AppColors.danger,
+                    bgColor: AppColors.dangerLight,
+                    title: 'Stok Habis',
+                    value: '$outOfStockCount Produk',
+                  ),
+                ],
+              );
+            },
           ),
-        ),
-        const SizedBox(height: 8),
-        Expanded(child: _buildProductList(productProvider)),
-      ],
+          const SizedBox(height: 20),
+
+          // Toolbar: Search + Stock Status Filter
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+              boxShadow: AppColors.cardShadow,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: _searchController,
+                  onChanged: _search,
+                  decoration: InputDecoration(
+                    hintText: 'Cari nama produk, SKU, atau kategori...',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: _searchController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.clear_rounded),
+                            onPressed: () {
+                              _searchController.clear();
+                              _search('');
+                            },
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final filter in ['Semua', 'Stok Tersedia', 'Stok Menipis', 'Stok Habis'])
+                      ChoiceChip(
+                        label: Text(filter),
+                        selected: _stockFilter == filter,
+                        onSelected: (_) => setState(() => _stockFilter = filter),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Product List Section
+          if (productProvider.isLoading && products.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(40),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (productProvider.error != null && products.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    const Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.textMuted),
+                    const SizedBox(height: 12),
+                    Text(productProvider.error!),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: () => productProvider.loadProducts(),
+                      child: const Text('Coba Lagi'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (filtered.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(48),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: const BoxDecoration(
+                        color: AppColors.primaryLight,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.inventory_2_outlined, size: 40, color: AppColors.primary),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Tidak ada produk yang cocok',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.textDark),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Coba ubah kata kunci atau filter status stok',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: filtered.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final product = filtered[index];
+                return _buildProductCard(context, product);
+              },
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _buildProductList(ProductProvider provider) {
-    if (provider.isLoading && provider.products.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (provider.error != null && provider.products.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
-            const SizedBox(height: 12),
-            Text(provider.error!),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: () => provider.loadProducts(),
-              child: const Text('Coba Lagi'),
+  Widget _buildKpiCard({
+    required double width,
+    required IconData icon,
+    required Color color,
+    required Color bgColor,
+    required String title,
+    required String value,
+  }) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(12),
             ),
-          ],
-        ),
-      );
-    }
-
-    if (provider.products.isEmpty) {
-      return const Center(
-        child: Text(
-          'Belum ada produk.\nTekan ikon + di kanan atas untuk menambahkan.',
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => provider.loadProducts(),
-      child: ListView.builder(
-        itemCount: provider.products.length,
-        itemBuilder: (context, index) {
-          final product = provider.products[index];
-          return _buildProductCard(context, product);
-        },
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textDark,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildProductCard(BuildContext context, Product product) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      clipBehavior: Clip.antiAlias,
+    final outOfStock = product.stock <= 0;
+    final lowStock = !outOfStock && product.stock <= 5;
+    final margin = product.price > 0 && product.cost > 0
+        ? ((product.price - product.cost) / product.price * 100).toStringAsFixed(0)
+        : null;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow,
+      ),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.blue.withValues(alpha: 0.1),
-          foregroundImage: product.imageUrl != null
-              ? NetworkImage(product.imageUrl!)
-              : null,
-          onForegroundImageError: product.imageUrl != null
-              ? (_, _) {}
-              : null,
-          child: Text(
-            product.name.isNotEmpty ? product.name[0].toUpperCase() : '?',
-            style: const TextStyle(color: Colors.blue),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 48,
+          height: 48,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(10),
           ),
+          child: product.imageUrl != null
+              ? Image.network(
+                  product.imageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => const Icon(Icons.inventory_2_outlined, color: AppColors.primary),
+                )
+              : const Icon(Icons.inventory_2_outlined, color: AppColors.primary),
         ),
-        title: Text(product.name),
-        subtitle: Text(
-          '${product.sku} • Stok: ${product.stock}\n'
-          'Harga: ${formatRupiah(product.price.toInt())}',
-        ),
-        isThreeLine: true,
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+        title: Row(
           children: [
-            Icon(Icons.edit,
-                size: 18, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 2),
-            Text(
-              'Edit',
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.primary,
+            Expanded(
+              child: Text(
+                product.name,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppColors.textDark),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Text(
+                product.sku,
+                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: AppColors.textMedium),
               ),
             ),
           ],
         ),
-        onTap: () => _openEditSheet(product),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                'Jual: ${formatRupiah(product.price)}',
+                style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.success, fontSize: 13),
+              ),
+              if (product.cost > 0)
+                Text(
+                  'Modal: ${formatRupiah(product.cost)}',
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                ),
+              if (margin != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '+$margin% Laba',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
+                  ),
+                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: outOfStock ? AppColors.danger : (lowStock ? AppColors.warning : AppColors.success),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Stok: ${product.stock}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: outOfStock ? AppColors.danger : (lowStock ? AppColors.warning : AppColors.textDark),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        trailing: FilledButton.tonal(
+          onPressed: () => _openEditSheet(product),
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.edit_rounded, size: 15),
+              SizedBox(width: 4),
+              Text('Edit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -597,19 +856,51 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Edit Produk',
-              style: Theme.of(context).textTheme.titleLarge,
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.edit_note_rounded, color: AppColors.primary, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Edit Informasi Produk',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      Text(
+                        'Perbarui data harga, stok, atau SKU produk',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, color: AppColors.textMuted),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             Form(
@@ -618,13 +909,12 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildImagePicker(),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   TextFormField(
                     controller: _nameController,
                     decoration: const InputDecoration(
                       labelText: 'Nama Produk',
-                      prefixIcon: Icon(Icons.inventory_2),
-                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.inventory_2_outlined),
                     ),
                     validator: (v) =>
                         v == null || v.trim().isEmpty ? 'Nama wajib diisi' : null,
@@ -633,9 +923,8 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                   TextFormField(
                     controller: _skuController,
                     decoration: const InputDecoration(
-                      labelText: 'SKU (kode produk)',
-                      prefixIcon: Icon(Icons.tag),
-                      border: OutlineInputBorder(),
+                      labelText: 'SKU (Kode Produk)',
+                      prefixIcon: Icon(Icons.tag_rounded),
                     ),
                     textCapitalization: TextCapitalization.characters,
                     validator: (v) =>
@@ -649,8 +938,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                           controller: _priceController,
                           decoration: const InputDecoration(
                             labelText: 'Harga Jual (Rp)',
-                            prefixIcon: Icon(Icons.attach_money),
-                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.payments_outlined),
                           ),
                           keyboardType: TextInputType.number,
                           inputFormatters: [
@@ -672,8 +960,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                           controller: _costController,
                           decoration: const InputDecoration(
                             labelText: 'Modal (Rp)',
-                            prefixIcon: Icon(Icons.savings),
-                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.savings_outlined),
                           ),
                           keyboardType: TextInputType.number,
                           inputFormatters: [
@@ -690,9 +977,8 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                         child: TextFormField(
                           controller: _stockController,
                           decoration: const InputDecoration(
-                            labelText: 'Stok',
-                            prefixIcon: Icon(Icons.numbers),
-                            border: OutlineInputBorder(),
+                            labelText: 'Jumlah Stok',
+                            prefixIcon: Icon(Icons.numbers_rounded),
                           ),
                           keyboardType: TextInputType.number,
                           inputFormatters: [
@@ -706,36 +992,46 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                           controller: _categoryController,
                           decoration: const InputDecoration(
                             labelText: 'Kategori',
-                            prefixIcon: Icon(Icons.category),
-                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.category_outlined),
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   FilledButton(
                     onPressed: _isSaving ? null : _save,
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                     child: _isSaving
                         ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : const Text('Simpan Perubahan'),
+                        : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.save_rounded, size: 20),
+                              SizedBox(width: 8),
+                              Text('Simpan Perubahan', style: TextStyle(fontWeight: FontWeight.bold)),
+                            ],
+                          ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   OutlinedButton.icon(
                     onPressed: _isSaving ? null : _delete,
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
+                      foregroundColor: AppColors.danger,
+                      side: const BorderSide(color: AppColors.danger, width: 1.2),
                       padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    icon: const Icon(Icons.delete_outline),
-                    label: const Text('Hapus Produk'),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                    label: const Text('Hapus Produk Ini', style: TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),

@@ -53,10 +53,29 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 
 connectDB().then(() => {
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`Server POS berjalan di http://localhost:${PORT}`);
     // Mulai koneksi WhatsApp di background agar QR langsung tampil di terminal
     // (dan di http://localhost:PORT/api/whatsapp) tanpa memanggil endpoint dulu.
+    // Bila sesi LocalAuth masih ada, WhatsApp langsung tersambung tanpa scan QR.
     whatsappService.initialize();
+  });
+
+  // Tutup browser WhatsApp dengan rapi saat server dihentikan (Ctrl+C),
+  // supaya sesi LocalAuth tersimpan dan tidak ada browser yang tertinggal.
+  const shutdown = async (signal) => {
+    console.log(`\nMenerima ${signal}, menutup server...`);
+    try {
+      await whatsappService.shutdown();
+    } catch (error) {
+      console.error('Gagal menutup WhatsApp:', error.message);
+    }
+    server.close(() => process.exit(0));
+    // Jaring pengaman bila koneksi lama menahan proses.
+    setTimeout(() => process.exit(0), 5000).unref();
+  };
+
+  ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK'].forEach((signal) => {
+    process.on(signal, () => shutdown(signal));
   });
 });

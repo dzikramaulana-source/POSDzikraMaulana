@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/product_provider.dart';
+import '../theme/app_colors.dart';
 
 class ProductFormScreen extends StatefulWidget {
   final Product? product; // null = tambah baru, tidak null = edit
@@ -72,7 +73,20 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       if (!mounted) return;
       if (bytes.length > 2 * 1024 * 1024) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ukuran gambar maksimal 2MB')),
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded,
+                    color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Text('Ukuran gambar maksimal 2MB'),
+              ],
+            ),
+            backgroundColor: AppColors.warning,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
         );
         return;
       }
@@ -92,6 +106,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   ? 'Plugin kamera/file belum aktif. Hentikan lalu jalankan ulang aplikasi (flutter run) agar fitur gambar berfungsi.'
                   : 'Gagal memilih gambar: $cause',
             ),
+            backgroundColor: AppColors.danger,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -100,15 +118,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   /// Area preview + tombol pilih/hapus gambar produk.
   Widget _buildImagePicker() {
-    final existingUrl =
-        !_clearImage ? widget.product?.imageUrl : null;
+    final existingUrl = !_clearImage ? widget.product?.imageUrl : null;
     final hasImage = _pickedImageBytes != null || existingUrl != null;
-
-    Widget placeholder = Container(
-      color: const Color(0xFFF1F5F9),
-      child: const Icon(Icons.add_photo_alternate_outlined,
-          size: 32, color: Colors.grey),
-    );
 
     Widget preview;
     if (_pickedImageBytes != null) {
@@ -117,22 +128,24 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       preview = Image.network(
         existingUrl,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => placeholder,
+        errorBuilder: (_, _, _) => const _ImagePlaceholder(),
       );
     } else {
-      preview = placeholder;
+      preview = const _ImagePlaceholder();
     }
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radius),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Thumbnail
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: SizedBox(width: 96, height: 96, child: preview),
@@ -145,27 +158,40 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 const Text(
                   'Gambar Produk',
                   style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1F2937),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppColors.textDark,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'PNG/JPG/WebP/GIF • maks 2MB',
+                const SizedBox(height: 3),
+                const Text(
+                  'PNG / JPG / WebP  •  Maks 2 MB',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey.shade600,
+                    color: AppColors.textMuted,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
-                  runSpacing: 4,
+                  runSpacing: 6,
                   children: [
                     OutlinedButton.icon(
                       onPressed: _pickImage,
-                      icon: const Icon(Icons.photo_library_outlined, size: 18),
-                      label: const Text('Pilih Gambar'),
+                      icon: const Icon(Icons.photo_library_outlined, size: 16),
+                      label: const Text(
+                        'Pilih Gambar',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
                     ),
                     if (hasImage)
                       TextButton.icon(
@@ -176,10 +202,18 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                             _clearImage = true;
                           });
                         },
-                        icon: const Icon(Icons.delete_outline, size: 18),
-                        label: const Text('Hapus'),
+                        icon: const Icon(Icons.delete_outline, size: 16),
+                        label: const Text(
+                          'Hapus',
+                          style: TextStyle(fontSize: 13),
+                        ),
                         style: TextButton.styleFrom(
-                          foregroundColor: Colors.red,
+                          foregroundColor: AppColors.danger,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                   ],
@@ -242,12 +276,38 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_isEdit ? 'Produk diperbarui' : 'Produk ditambahkan')),
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_outline,
+                  color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Text(_isEdit ? 'Produk berhasil diperbarui' : 'Produk berhasil ditambahkan'),
+            ],
+          ),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
       );
       Navigator.of(context).pop(true);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(provider.error ?? 'Gagal menyimpan produk')),
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: Text(provider.error ?? 'Gagal menyimpan produk')),
+            ],
+          ),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
       );
     }
   }
@@ -255,122 +315,310 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(_isEdit ? 'Edit Produk' : 'Tambah Produk'),
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textDark,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: Text(
+          _isEdit ? 'Edit Produk' : 'Tambah Produk',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textDark,
+          ),
+        ),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: AppColors.border),
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // ── Gambar Produk ──
               _buildImagePicker(),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nama Produk',
-                  prefixIcon: Icon(Icons.inventory_2),
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Nama wajib diisi' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _skuController,
-                decoration: const InputDecoration(
-                  labelText: 'SKU (kode produk)',
-                  prefixIcon: Icon(Icons.tag),
-                  border: OutlineInputBorder(),
-                ),
-                textCapitalization: TextCapitalization.characters,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'SKU wajib diisi' : null,
-              ),
-              const SizedBox(height: 16),
-              Row(
+              const SizedBox(height: 20),
+
+              // ── Informasi Dasar ──
+              _SectionLabel(label: 'Informasi Produk'),
+              const SizedBox(height: 10),
+              _FormCard(
                 children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _priceController,
-                      decoration: const InputDecoration(
-                        labelText: 'Harga Jual (Rp)',
-                        prefixIcon: Icon(Icons.attach_money),
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Harga wajib diisi';
-                        }
-                        final n = int.tryParse(v.trim());
-                        if (n == null || n < 0) return 'Harga tidak valid';
-                        return null;
-                      },
-                    ),
+                  _StyledField(
+                    controller: _nameController,
+                    label: 'Nama Produk',
+                    icon: Icons.inventory_2_outlined,
+                    hintText: 'Contoh: Kopi Arabika 250g',
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Nama wajib diisi' : null,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _costController,
-                      decoration: const InputDecoration(
-                        labelText: 'Modal (Rp)',
-                        prefixIcon: Icon(Icons.savings),
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    ),
+                  const SizedBox(height: 14),
+                  _StyledField(
+                    controller: _skuController,
+                    label: 'SKU (Kode Produk)',
+                    icon: Icons.tag_outlined,
+                    hintText: 'Contoh: KOP-001',
+                    textCapitalization: TextCapitalization.characters,
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'SKU wajib diisi' : null,
+                  ),
+                  const SizedBox(height: 14),
+                  _StyledField(
+                    controller: _categoryController,
+                    label: 'Kategori',
+                    icon: Icons.category_outlined,
+                    hintText: 'Contoh: Minuman',
                   ),
                 ],
               ),
               const SizedBox(height: 16),
-              Row(
+
+              // ── Harga & Modal ──
+              _SectionLabel(label: 'Harga & Modal'),
+              const SizedBox(height: 10),
+              _FormCard(
                 children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _stockController,
-                      decoration: const InputDecoration(
-                        labelText: 'Stok',
-                        prefixIcon: Icon(Icons.numbers),
-                        border: OutlineInputBorder(),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _StyledField(
+                          controller: _priceController,
+                          label: 'Harga Jual (Rp)',
+                          icon: Icons.sell_outlined,
+                          hintText: '0',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Harga wajib diisi';
+                            }
+                            final n = int.tryParse(v.trim());
+                            if (n == null || n < 0) return 'Harga tidak valid';
+                            return null;
+                          },
+                        ),
                       ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _categoryController,
-                      decoration: const InputDecoration(
-                        labelText: 'Kategori',
-                        prefixIcon: Icon(Icons.category),
-                        border: OutlineInputBorder(),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _StyledField(
+                          controller: _costController,
+                          label: 'Modal (Rp)',
+                          icon: Icons.savings_outlined,
+                          hintText: '0',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+
+              // ── Stok ──
+              _SectionLabel(label: 'Manajemen Stok'),
+              const SizedBox(height: 10),
+              _FormCard(
+                children: [
+                  _StyledField(
+                    controller: _stockController,
+                    label: 'Jumlah Stok',
+                    icon: Icons.inventory_outlined,
+                    hintText: '0',
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
+
+              // ── Tombol Simpan ──
+              SizedBox(
+                height: 52,
+                child: FilledButton(
+                  onPressed: _isSaving ? null : _save,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2.5, color: Colors.white),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _isEdit
+                                  ? Icons.save_outlined
+                                  : Icons.add_circle_outline,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _isEdit ? 'Simpan Perubahan' : 'Tambah Produk',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
               ),
               const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _isSaving ? null : _save,
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: _isSaving
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(_isEdit ? 'Simpan Perubahan' : 'Tambah Produk'),
-              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Private Helper Widgets ─────────────────────────────────────────────────
+
+class _ImagePlaceholder extends StatelessWidget {
+  const _ImagePlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.surfaceVariant,
+      child: const Center(
+        child: Icon(
+          Icons.add_photo_alternate_outlined,
+          size: 32,
+          color: AppColors.textMuted,
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String label;
+
+  const _SectionLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textMuted,
+        letterSpacing: 0.5,
+      ),
+    );
+  }
+}
+
+class _FormCard extends StatelessWidget {
+  final List<Widget> children;
+
+  const _FormCard({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radius),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      ),
+    );
+  }
+}
+
+class _StyledField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final String hintText;
+  final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+  final FormFieldValidator<String>? validator;
+  final TextCapitalization textCapitalization;
+
+  const _StyledField({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    required this.hintText,
+    this.keyboardType,
+    this.inputFormatters,
+    this.validator,
+    this.textCapitalization = TextCapitalization.none,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      validator: validator,
+      textCapitalization: textCapitalization,
+      style: const TextStyle(
+        fontSize: 14,
+        color: AppColors.textDark,
+        fontWeight: FontWeight.w500,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(
+          fontSize: 13,
+          color: AppColors.textMuted,
+        ),
+        hintText: hintText,
+        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+        prefixIcon: Icon(icon, size: 18, color: AppColors.textMuted),
+        filled: true,
+        fillColor: AppColors.surfaceVariant,
+        isDense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.danger),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
         ),
       ),
     );

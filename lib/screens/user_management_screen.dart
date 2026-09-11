@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/user.dart';
 import '../providers/notification_provider.dart';
 import '../providers/user_provider.dart';
+import '../theme/app_colors.dart';
 import '../widgets/pos_app_bar_actions.dart';
 import 'user_form_screen.dart';
 
@@ -235,23 +236,82 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         itemCount: provider.users.length,
         itemBuilder: (context, index) {
           final user = provider.users[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.borderLight),
+              boxShadow: AppColors.cardShadow,
+            ),
             child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.teal.withValues(alpha: 0.1),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              leading: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
                 child: Text(
                   user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                  style: const TextStyle(color: Colors.teal),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
                 ),
               ),
-              title: Text(user.name),
-              subtitle: Text('@${user.username}'),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      user.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.successLight,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'Kasir',
+                      style: TextStyle(
+                        color: AppColors.success,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  '@${user.username}',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blue),
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    color: AppColors.primary,
+                    tooltip: 'Edit Kasir',
                     onPressed: () async {
                       final provider = context.read<UserProvider>();
                       await Navigator.of(context).push(
@@ -265,7 +325,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     },
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                    color: AppColors.danger,
+                    tooltip: 'Hapus Kasir',
                     onPressed: () => _deleteKasir(user),
                   ),
                 ],

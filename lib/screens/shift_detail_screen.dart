@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/shift.dart';
 import '../services/shift_service.dart';
+import '../theme/app_colors.dart';
 import '../utils/formatter.dart';
 import '../utils/payment_method.dart';
 
@@ -63,14 +64,34 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Detail Shift')),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textDark,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: const Text(
+          'Detail Shift',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textDark,
+          ),
+        ),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: AppColors.border),
+        ),
+      ),
       body: _buildBody(context),
     );
   }
 
   Widget _buildBody(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
     }
 
     if (_error != null) {
@@ -78,13 +99,26 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
-            const SizedBox(height: 12),
-            Text(_error!),
-            const SizedBox(height: 12),
-            FilledButton(
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: const BoxDecoration(
+                color: AppColors.dangerLight,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.cloud_off_rounded,
+                  size: 40, color: AppColors.danger),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _error!,
+              style: const TextStyle(color: AppColors.textMedium),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
               onPressed: _load,
-              child: const Text('Coba Lagi'),
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Coba Lagi'),
             ),
           ],
         ),
@@ -99,283 +133,412 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> {
     final summary = _summary ?? ShiftSummary.fromJson(null);
 
     return RefreshIndicator(
+      color: AppColors.primary,
       onRefresh: _load,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         children: [
-          // Kartu info shift
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          // ── Info Shift ──
+          _SectionCard(
+            children: [
+              Row(
                 children: [
-                  Row(
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: shift.isOpen
+                          ? AppColors.successLight
+                          : AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      shift.isOpen
+                          ? Icons.play_circle_outline
+                          : Icons.stop_circle_outlined,
+                      color: shift.isOpen
+                          ? AppColors.success
+                          : AppColors.textMuted,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: shift.isOpen
-                              ? Colors.green.withValues(alpha: 0.1)
-                              : Colors.grey.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          shift.isOpen ? 'Aktif' : 'Tutup',
-                          style: TextStyle(
-                            color: shift.isOpen ? Colors.green : Colors.grey[700],
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
+                      const Text(
+                        'Status Shift',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
                         ),
                       ),
-                      const Spacer(),
-                      if (shift.autoClosed)
-                        Text(
-                          'Ditutup otomatis',
-                          style: TextStyle(
-                            color: Colors.orange[800],
-                            fontSize: 12,
+                      Container(
+                        margin: const EdgeInsets.only(top: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: shift.isOpen
+                              ? AppColors.successLight
+                              : AppColors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: shift.isOpen
+                                ? AppColors.success.withValues(alpha: 0.3)
+                                : AppColors.border,
                           ),
                         ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: shift.isOpen
+                                    ? AppColors.success
+                                    : AppColors.textMuted,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              shift.isOpen ? 'Sedang Aktif' : 'Sudah Ditutup',
+                              style: TextStyle(
+                                color: shift.isOpen
+                                    ? AppColors.success
+                                    : AppColors.textMuted,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                  const Divider(height: 24),
-                  _InfoRow(
-                    icon: Icons.person_outline,
-                    label: 'Kasir',
-                    value: shift.kasirName.isEmpty
-                        ? shift.kasirId
-                        : shift.kasirName,
-                  ),
-                  const SizedBox(height: 12),
-                  _InfoRow(
-                    icon: Icons.login,
-                    label: 'Buka Shift',
-                    value: _fmtDateTime(shift.openedAt),
-                  ),
-                  if (shift.closedAt != null) ...[
-                    const SizedBox(height: 12),
-                    _InfoRow(
-                      icon: Icons.logout,
-                      label: 'Tutup Shift',
-                      value: _fmtDateTime(shift.closedAt!),
+                  const Spacer(),
+                  if (shift.autoClosed)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.warningLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'Auto Closed',
+                        style: TextStyle(
+                          color: AppColors.warning,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
-                  ],
-                  const SizedBox(height: 12),
-                  _InfoRow(
-                    icon: Icons.savings,
-                    label: 'Kas Awal',
-                    value: formatRupiah(shift.openingCash),
-                  ),
-                  if (shift.closingCash != null) ...[
-                    const SizedBox(height: 12),
-                    _InfoRow(
-                      icon: Icons.payments,
-                      label: 'Kas Akhir (Fisik)',
-                      value: formatRupiah(shift.closingCash!),
-                    ),
-                  ],
                 ],
               ),
-            ),
+              const SizedBox(height: 18),
+              Container(height: 1, color: AppColors.border),
+              const SizedBox(height: 18),
+              _InfoRow(
+                icon: Icons.person_outline,
+                label: 'Kasir',
+                value: shift.kasirName.isEmpty ? shift.kasirId : shift.kasirName,
+              ),
+              const SizedBox(height: 14),
+              _InfoRow(
+                icon: Icons.login_outlined,
+                label: 'Buka Shift',
+                value: _fmtDateTime(shift.openedAt),
+              ),
+              if (shift.closedAt != null) ...[
+                const SizedBox(height: 14),
+                _InfoRow(
+                  icon: Icons.logout_outlined,
+                  label: 'Tutup Shift',
+                  value: _fmtDateTime(shift.closedAt!),
+                ),
+              ],
+              const SizedBox(height: 14),
+              _InfoRow(
+                icon: Icons.savings_outlined,
+                label: 'Kas Awal',
+                value: formatRupiah(shift.openingCash),
+              ),
+              if (shift.closingCash != null) ...[
+                const SizedBox(height: 14),
+                _InfoRow(
+                  icon: Icons.payments_outlined,
+                  label: 'Kas Akhir (Fisik)',
+                  value: formatRupiah(shift.closingCash!),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 16),
-          Text('Ringkasan Transaksi',
-              style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _summaryRow('Jumlah Transaksi',
-                      '${summary.totalTransactions}'),
-                  const SizedBox(height: 12),
-                  _summaryRow(
-                    'Total Penjualan',
-                    formatRupiah(summary.totalSales),
-                    emphasize: true,
-                  ),
-                  const SizedBox(height: 12),
-                  _summaryRow(
-                    'Penjualan Tunai',
-                    formatRupiah(summary.cashSales),
-                  ),
-                  if (summary.paymentSummary.isNotEmpty) ...[
-                    const Divider(height: 24),
-                    ...summary.paymentSummary.map((p) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              Icon(paymentIcon(p.method),
-                                  size: 18, color: paymentColor(p.method)),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  '${paymentLabel(p.method)} (${p.count})',
-                                  style:
-                                      Theme.of(context).textTheme.bodyMedium,
-                                ),
-                              ),
-                              Text(
-                                formatRupiah(p.total),
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                        )),
-                  ],
-                ],
-              ),
-            ),
+
+          // ── Ringkasan Transaksi ──
+          _SectionHeader(
+            icon: Icons.bar_chart_rounded,
+            title: 'Ringkasan Transaksi',
           ),
-          // Rekap kas (hanya untuk shift tertutup)
+          const SizedBox(height: 10),
+          _SectionCard(
+            children: [
+              _SummaryRow(
+                label: 'Jumlah Transaksi',
+                value: '${summary.totalTransactions} transaksi',
+              ),
+              const SizedBox(height: 12),
+              _SummaryRow(
+                label: 'Total Penjualan',
+                value: formatRupiah(summary.totalSales),
+                emphasized: true,
+              ),
+              const SizedBox(height: 12),
+              _SummaryRow(
+                label: 'Penjualan Tunai',
+                value: formatRupiah(summary.cashSales),
+              ),
+              if (summary.paymentSummary.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Container(height: 1, color: AppColors.border),
+                const SizedBox(height: 14),
+                ...summary.paymentSummary.map((p) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color:
+                                  paymentColor(p.method).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              paymentIcon(p.method),
+                              size: 16,
+                              color: paymentColor(p.method),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  paymentLabel(p.method),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textDark,
+                                  ),
+                                ),
+                                Text(
+                                  '${p.count} transaksi',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            formatRupiah(p.total),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+              ],
+            ],
+          ),
+
+          // ── Rekap Kas ──
           if (!shift.isOpen) ...[
             const SizedBox(height: 16),
-            Text('Rekap Kas', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _rekapRow(
-                      'Kas Sistem',
-                      '(Kas awal + penjualan tunai)',
-                      formatRupiah(_expectedCash ?? 0),
-                    ),
-                    const SizedBox(height: 12),
-                    _rekapRow(
-                      'Uang Fisik',
-                      '(Kas akhir dicatat kasir)',
-                      formatRupiah(shift.closingCash ?? 0),
-                    ),
-                    const Divider(height: 24),
-                    _buildDifference(context, _difference),
-                  ],
+            _SectionHeader(
+              icon: Icons.account_balance_wallet_outlined,
+              title: 'Rekap Kas',
+            ),
+            const SizedBox(height: 10),
+            _SectionCard(
+              children: [
+                _RekapRow(
+                  label: 'Kas Sistem',
+                  sublabel: 'Kas awal + penjualan tunai',
+                  value: formatRupiah(_expectedCash ?? 0),
                 ),
-              ),
+                const SizedBox(height: 14),
+                Container(height: 1, color: AppColors.border),
+                const SizedBox(height: 14),
+                _RekapRow(
+                  label: 'Uang Fisik',
+                  sublabel: 'Kas akhir dicatat kasir',
+                  value: formatRupiah(shift.closingCash ?? 0),
+                ),
+                const SizedBox(height: 14),
+                Container(height: 1, color: AppColors.border),
+                const SizedBox(height: 14),
+                _buildDifference(_difference),
+              ],
             ),
           ] else ...[
             const SizedBox(height: 16),
-            Card(
-              color: Colors.blue.withValues(alpha: 0.06),
-              child: const Padding(
-                padding: EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Shift ini masih berjalan. Tutup shift untuk melihat rekap kas dan selisih.',
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(AppColors.radius),
+                border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.2)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, color: AppColors.primary),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Shift ini masih berjalan. Tutup shift untuk melihat rekap kas dan selisih.',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  Widget _buildDifference(BuildContext context, double? difference) {
+  Widget _buildDifference(double? difference) {
     if (difference == null) return const SizedBox.shrink();
 
-    final Color color;
+    final Color bgColor;
+    final Color fgColor;
+    final IconData icon;
     final String label;
+
     if (difference > 0) {
-      color = Colors.green;
+      bgColor = AppColors.successLight;
+      fgColor = AppColors.success;
+      icon = Icons.arrow_upward_rounded;
       label = 'Lebih ${formatRupiah(difference)}';
     } else if (difference < 0) {
-      color = Colors.red;
+      bgColor = AppColors.dangerLight;
+      fgColor = AppColors.danger;
+      icon = Icons.arrow_downward_rounded;
       label = 'Kurang ${formatRupiah(difference.abs())}';
     } else {
-      color = Colors.blueGrey;
-      label = 'Pas';
+      bgColor = AppColors.primaryLight;
+      fgColor = AppColors.primary;
+      icon = Icons.check_rounded;
+      label = 'Pas / Tidak Ada Selisih';
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Selisih',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Icon(
-              difference == 0 ? Icons.check_circle : Icons.info,
-              color: color,
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: fgColor.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _summaryRow(String label, String value, {bool emphasize = false}) {
-    return Row(
-      children: [
-        Expanded(child: Text(label)),
-        Text(
-          value,
-          style: emphasize
-              ? TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Theme.of(context).colorScheme.primary,
-                )
-              : const TextStyle(fontWeight: FontWeight.w600),
-        ),
-      ],
-    );
-  }
-
-  Widget _rekapRow(String label, String sublabel, String value) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
+            child: Icon(icon, color: fgColor, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label),
               Text(
-                sublabel,
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                'Selisih Kas',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: fgColor.withValues(alpha: 0.8),
+                ),
+              ),
+              Text(
+                label,
+                style: TextStyle(
+                  color: fgColor,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
               ),
             ],
           ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   String _fmtDateTime(DateTime dt) =>
-      DateFormat('EEEE, dd MMM yyyy • HH:mm', 'id_ID').format(dt);
+      DateFormat('EEE, dd MMM yyyy • HH:mm', 'id_ID').format(dt);
+}
+
+// ─── Helper Widgets ────────────────────────────────────────────────────────
+
+class _SectionCard extends StatelessWidget {
+  final List<Widget> children;
+
+  const _SectionCard({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radius),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final IconData icon;
+  final String title;
+
+  const _SectionHeader({required this.icon, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.textMuted),
+        const SizedBox(width: 6),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textMedium,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _InfoRow extends StatelessWidget {
@@ -393,16 +556,111 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: Colors.grey[600]),
+        Icon(icon, size: 18, color: AppColors.textMuted),
         const SizedBox(width: 10),
-        Expanded(
-          child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
         ),
+        const Spacer(),
         Flexible(
           child: Text(
             value,
-            style: const TextStyle(fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: AppColors.textDark,
+            ),
             textAlign: TextAlign.end,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool emphasized;
+
+  const _SummaryRow({
+    required this.label,
+    required this.value,
+    this.emphasized = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: emphasized ? AppColors.textDark : AppColors.textMedium,
+              fontWeight:
+                  emphasized ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: emphasized ? 16 : 14,
+            color: emphasized ? AppColors.primary : AppColors.textDark,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RekapRow extends StatelessWidget {
+  final String label;
+  final String sublabel;
+  final String value;
+
+  const _RekapRow({
+    required this.label,
+    required this.sublabel,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textDark,
+                ),
+              ),
+              Text(
+                sublabel,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+            color: AppColors.textDark,
           ),
         ),
       ],
