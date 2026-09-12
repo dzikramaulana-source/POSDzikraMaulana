@@ -1,46 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
 import '../providers/notification_provider.dart';
 import '../screens/notification_screen.dart';
 import '../theme/app_colors.dart';
 import 'pos_profile_chip.dart';
 
 /// Aksi global di pojok kanan atas setiap layar menu:
-/// tombol Notifikasi (dengan badge jumlah belum dibaca), tombol Logout (dengan konfirmasi),
-/// dan profil chip pengguna.
+/// tombol Notifikasi (dengan badge jumlah belum dibaca) dan profil chip pengguna
+/// yang membuka dropdown "Profil"/"Keluar".
 class PosAppBarActions extends StatelessWidget {
   const PosAppBarActions({super.key});
-
-  Future<void> _logout(BuildContext context) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.logout_rounded, color: AppColors.danger, size: 36),
-        title: const Text('Keluar dari Akun?'),
-        content: const Text(
-          'Pastikan seluruh transaksi aktif telah selesai atau shift telah ditutup sebelum keluar.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.danger,
-            ),
-            child: const Text('Ya, Keluar'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true && context.mounted) {
-      await context.read<AuthProvider>().logout();
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,11 +38,6 @@ class PosAppBarActions extends StatelessWidget {
           },
         ),
         const SizedBox(width: 4),
-        IconButton(
-          icon: const Icon(Icons.logout_rounded, size: 22, color: AppColors.textMuted),
-          tooltip: 'Logout',
-          onPressed: () => _logout(context),
-        ),
         const PosProfileChip(),
       ],
     );
