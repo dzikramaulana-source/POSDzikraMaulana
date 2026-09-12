@@ -5,6 +5,8 @@ import '../models/product.dart';
 import '../models/transaction.dart';
 import '../providers/cart_provider.dart';
 import '../providers/product_provider.dart';
+import '../providers/report_provider.dart';
+import '../providers/shift_provider.dart';
 import '../services/transaction_service.dart';
 import '../utils/formatter.dart';
 import '../utils/payment_method.dart';
@@ -1139,6 +1141,12 @@ class _PaymentSheetState extends State<_PaymentSheet> {
 
     setState(() => _isProcessing = true);
     final cart = context.read<CartProvider>();
+    // Simpan referensi provider & navigator sebelum bottom sheet ditutup,
+    // supaya pembaruan data tetap berjalan setelah context sheet tidak aktif.
+    final productProvider = context.read<ProductProvider>();
+    final shiftProvider = context.read<ShiftProvider>();
+    final reportProvider = context.read<ReportProvider>();
+    final navigator = Navigator.of(context);
 
     try {
       final transaction = await TransactionService.createTransaction(
@@ -1149,7 +1157,7 @@ class _PaymentSheetState extends State<_PaymentSheet> {
 
       if (!mounted) return;
       cart.clear();
-      Navigator.of(context).pop();
+      navigator.pop();
 
       // Tampilkan dialog sukses
       await showDialog<void>(
@@ -1158,10 +1166,13 @@ class _PaymentSheetState extends State<_PaymentSheet> {
         builder: (context) => _PaymentSuccessDialog(transaction: transaction),
       );
 
-      // Refresh stok produk setelah transaksi
-      if (mounted) {
-        context.read<ProductProvider>().loadProducts();
-      }
+      // Perbarui otomatis data Kas/Shift, Laporan, dan stok produk
+      await _refreshAfterTransaction(
+        navigator: navigator,
+        productProvider: productProvider,
+        shiftProvider: shiftProvider,
+        reportProvider: reportProvider,
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
@@ -1666,6 +1677,81 @@ class _PaymentMethodTile extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Memperbarui data Kas/Shift, Laporan, dan stok produk setelah transaksi
+/// berhasil, sambil menampilkan animasi loading selama proses berlangsung.
+Future<void> _refreshAfterTransaction({
+  required NavigatorState navigator,
+  required ProductProvider productProvider,
+  required ShiftProvider shiftProvider,
+  required ReportProvider reportProvider,
+}) async {
+  BuildContext? overlayContext;
+
+  showDialog<void>(
+    context: navigator.context,
+    barrierDismissible: false,
+    builder: (context) {
+      overlayContext = context;
+      return const _DataRefreshDialog();
+    },
+  );
+
+  await Future.wait([
+    productProvider.loadProducts(),
+    shiftProvider.refresh(),
+    reportProvider.refresh(),
+    // Minimal tampil sebentar agar animasi loading terlihat jelas.
+    Future<void>.delayed(const Duration(milliseconds: 700)),
+  ]);
+
+  if (overlayContext != null && overlayContext!.mounted) {
+    Navigator.of(overlayContext!).pop();
+  }
+}
+
+/// Dialog loading saat data Kas/Shift & Laporan diperbarui otomatis.
+class _DataRefreshDialog extends StatelessWidget {
+  const _DataRefreshDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      child: AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 320),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              SizedBox(
+                width: 32,
+                height: 32,
+                child: CircularProgressIndicator(strokeWidth: 3),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Memperbarui Data',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: AppColors.textDark,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Kas/Shift, Laporan, dan stok produk...',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+            ],
+          ),
         ),
       ),
     );

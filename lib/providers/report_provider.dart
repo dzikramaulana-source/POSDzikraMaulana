@@ -31,6 +31,15 @@ class ReportProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Muat ulang laporan untuk periode yang sedang aktif. Dipakai untuk
+  // pembaruan otomatis setelah transaksi berhasil (tanpa refresh manual).
+  Future<void> refresh() async {
+    final now = DateTime.now();
+    final start = _start ?? DateTime(now.year, now.month, now.day);
+    final end = _end ?? DateTime(now.year, now.month, now.day);
+    await load(start: start, end: end);
+  }
+
   void clearError() {
     _error = null;
   }

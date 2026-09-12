@@ -119,21 +119,6 @@ class NotificationProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> clearAll({NotificationType? type}) async {
-    final typeName = type == null ? null : _typeName(type);
-    try {
-      await NotificationService.clearAll(type: typeName);
-      _items = type == null
-          ? []
-          : _items.where((n) => n.type != type).toList();
-      _unread = _items.where((n) => !n.read).length;
-      notifyListeners();
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-    }
-  }
-
   // Kirim pengumuman admin ke semua kasir. Kembalikan jumlah kasir penerima.
   Future<int?> broadcast({required String title, required String body}) async {
     try {

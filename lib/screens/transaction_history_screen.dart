@@ -320,38 +320,32 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       ('cash', 'Tunai'),
       ('qris', 'QRIS'),
     ];
-    final selected = await showModalBottomSheet<String>(
+    final selected = await showDialog<String>(
       context: context,
       builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: const Text('Filter Metode Pembayaran'),
-                trailing: IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ),
-              const Divider(height: 1),
-              Flexible(
-                child: RadioGroup<String>(
-                  groupValue: _payment ?? '',
-                  onChanged: (v) => Navigator.of(context).pop(v),
-                  child: ListView(
-                    shrinkWrap: true,
-                    children: methods.map((m) {
-                      return RadioListTile<String>(
-                        title: Text(m.$2),
-                        value: m.$1,
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-            ],
+        return AlertDialog(
+          title: const Text('Filter Metode Pembayaran'),
+          contentPadding: const EdgeInsets.only(top: 8, bottom: 4),
+          content: RadioGroup<String>(
+            groupValue: _payment ?? '',
+            onChanged: (v) => Navigator.of(context).pop(v),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: methods.map((m) {
+                return RadioListTile<String>(
+                  title: Text(m.$2),
+                  value: m.$1,
+                  dense: true,
+                );
+              }).toList(),
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Tutup'),
+            ),
+          ],
         );
       },
     );

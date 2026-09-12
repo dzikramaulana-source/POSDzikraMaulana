@@ -40,14 +40,6 @@ class NotificationService {
     await ApiService.delete('/notifications/$id');
   }
 
-  // Hapus semua notifikasi milik user.
-  // [type] opsional: batasi ke tipe tertentu (transaction/stock/broadcast).
-  static Future<void> clearAll({String? type}) async {
-    var path = '/notifications';
-    if (type != null) path = '$path?type=$type';
-    await ApiService.delete(path);
-  }
-
   // Kirim pengumuman ke semua kasir (khusus admin)
   static Future<int> broadcast({
     required String title,

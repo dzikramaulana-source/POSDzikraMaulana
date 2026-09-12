@@ -88,20 +88,13 @@ class _NotificationScreenState extends State<NotificationScreen>
           ),
         ),
         actions: [
-          if (_visibleItems(provider).isNotEmpty) ...[
+          if (_visibleItems(provider).isNotEmpty)
             _AppBarAction(
               icon: Icons.done_all_rounded,
               tooltip: 'Tandai semua dibaca',
               enabled: _unreadCount(provider, _activeType) > 0,
               onPressed: () => provider.markAllRead(type: _activeType),
             ),
-            _AppBarAction(
-              icon: Icons.delete_sweep_outlined,
-              tooltip: 'Hapus semua',
-              enabled: true,
-              onPressed: () => _confirmClearAll(context),
-            ),
-          ],
           const SizedBox(width: 8),
         ],
       ),
@@ -219,39 +212,6 @@ class _NotificationScreenState extends State<NotificationScreen>
         },
       ),
     );
-  }
-
-  Future<void> _confirmClearAll(BuildContext context) async {
-    final type = _activeType;
-    final label = type == NotificationType.transaction
-        ? 'Transaksi Berhasil'
-        : 'Stok Habis';
-
-    final provider = context.read<NotificationProvider>();
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Hapus Semua Notifikasi'),
-        content: Text('Yakin ingin menghapus semua notifikasi $label?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Hapus'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      await provider.clearAll(type: type);
-    }
   }
 }
 
