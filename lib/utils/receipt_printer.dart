@@ -25,6 +25,23 @@ class ReceiptPrinter {
   /// Nama toko/kasir untuk kop struk (bisa disesuaikan).
   static const String shopName = 'Toko Kasir';
 
+  /// Label tarif pajak (mis. "PPN 10%") dari tarif yang tersimpan di transaksi.
+  /// Untuk transaksi lama yang belum menyimpan tarif, dihitung dari nominal pajak.
+  static String _taxLabel(Transaction transaction) {
+    double percent = transaction.taxRate;
+    final subtotal = transaction.total - transaction.tax;
+    if (percent <= 0 && subtotal > 0) {
+      percent = transaction.tax / subtotal * 100;
+    }
+    if (percent <= 0) return 'PPN';
+
+    final rounded = (percent * 10).round() / 10;
+    final text = rounded == rounded.roundToDouble()
+        ? rounded.toStringAsFixed(0)
+        : rounded.toStringAsFixed(1);
+    return 'PPN $text%';
+  }
+
   /// Buat PDF struk dari data transaksi.
   static Future<Uint8List> generateReceiptPdf(Transaction transaction) async {
     final doc = pw.Document();
@@ -122,7 +139,7 @@ class ReceiptPrinter {
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text('PPN 10%', style: baseStyle),
+              pw.Text(_taxLabel(transaction), style: baseStyle),
               pw.Text(formatRupiah(transaction.tax), style: baseStyle),
             ],
           ),

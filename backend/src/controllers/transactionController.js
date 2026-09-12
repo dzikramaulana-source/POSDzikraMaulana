@@ -1,15 +1,13 @@
 const Transaction = require('../models/Transaction');
 const Product = require('../models/Product');
 const { createNotification } = require('./notificationController');
+const { getTaxRate } = require('./settingController');
 
 // Helper: format angka ribuan sederhana (mis. 25000 -> Rp25.000)
 const formatRupiah = (n) => {
   const s = Math.round(n).toString();
   return 'Rp' + s.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
-
-// Tarif Pajak Pertambahan Nilai (PPN)
-const TAX_RATE = 0.10;
 
 // Helper: buat notifikasi untuk kasir pelaku transaksi (tidak menggagalkan transaksi)
 const notifyKasir = async ({ kasirId, notifications }) => {
@@ -97,8 +95,10 @@ const createTransaction = async (req, res) => {
     });
     const invoiceNumber = `TRX-${dateStr}-${String(count + 1).padStart(4, '0')}`;
 
-    // Hitung PPN dan total yang harus dibayar (sudah termasuk pajak)
-    const tax = Math.round(subtotalTotal * TAX_RATE);
+    // Hitung PPN dan total yang harus dibayar (sudah termasuk pajak).
+    // Tarif diambil dari pengaturan sistem (default 10%).
+    const taxRate = await getTaxRate();
+    const tax = Math.round(subtotalTotal * taxRate);
     const total = subtotalTotal + tax;
 
     // Hitung kembalian
@@ -107,11 +107,15 @@ const createTransaction = async (req, res) => {
       return res.status(400).json({ message: 'Uang yang diterima kurang dari total belanja' });
     }
 
+    // Simpan tarif yang dipakai (dalam persen) untuk ditampilkan di struk/detail.
+    const taxRatePercent = Math.round(taxRate * 10000) / 100;
+
     const transaction = await Transaction.create({
       invoiceNumber,
       items: txItems,
       subtotal: subtotalTotal,
       tax,
+      taxRate: taxRatePercent,
       total,
       totalCost,
       profit: subtotalTotal - totalCost,

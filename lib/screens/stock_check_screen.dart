@@ -13,8 +13,20 @@ class StockCheckScreen extends StatefulWidget {
   State<StockCheckScreen> createState() => _StockCheckScreenState();
 }
 
+/// Opsi dropdown kategori pada layar Cek Stok.
+const List<String> _categoryOptions = ['Semua', 'Makanan', 'Minuman', 'Camilan'];
+
+/// Opsi dropdown pengurutan: berdasarkan stok (Terendah/Terbanyak) atau nama (A–Z/Z–A).
+const List<String> _sortOptions = ['Terendah', 'Terbanyak', 'A–Z', 'Z–A'];
+
 class _StockCheckScreenState extends State<StockCheckScreen> {
   final _searchController = TextEditingController();
+
+  /// Kategori yang dipilih. 'Semua' berarti seluruh kategori.
+  String _selectedCategory = 'Semua';
+
+  /// Urutan yang dipilih.
+  String _selectedSort = 'Terendah';
 
   @override
   void initState() {
@@ -46,31 +58,83 @@ class _StockCheckScreenState extends State<StockCheckScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _search,
-              decoration: InputDecoration(
-                hintText: 'Cari nama / SKU produk...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                suffixIcon: _searchController.text.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          _search('');
-                        },
-                      ),
-              ),
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: _buildFilterBar(),
           ),
           Expanded(child: _buildBody(productProvider)),
         ],
       ),
+    );
+  }
+
+  /// Bar filter: search bar diikuti dropdown Kategori & Urutkan.
+  /// Saat layar sempit, dropdown turun ke baris kedua agar tidak overflow.
+  Widget _buildFilterBar() {
+    final searchField = TextField(
+      controller: _searchController,
+      onChanged: _search,
+      decoration: InputDecoration(
+        hintText: 'Cari nama / SKU produk...',
+        prefixIcon: const Icon(Icons.search),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        suffixIcon: _searchController.text.isEmpty
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.clear),
+                onPressed: () {
+                  _searchController.clear();
+                  _search('');
+                },
+              ),
+      ),
+    );
+
+    final categoryDropdown = _FilterDropdown(
+      icon: Icons.category_outlined,
+      value: _selectedCategory,
+      items: _categoryOptions,
+      onChanged: (value) => setState(() => _selectedCategory = value),
+    );
+
+    final sortDropdown = _FilterDropdown(
+      icon: Icons.sort_rounded,
+      value: _selectedSort,
+      items: _sortOptions,
+      onChanged: (value) => setState(() => _selectedSort = value),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 900) {
+          return Row(
+            children: [
+              Expanded(flex: 5, child: searchField),
+              const SizedBox(width: 12),
+              Expanded(flex: 2, child: categoryDropdown),
+              const SizedBox(width: 12),
+              Expanded(flex: 2, child: sortDropdown),
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            searchField,
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: categoryDropdown),
+                const SizedBox(width: 12),
+                Expanded(child: sortDropdown),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -103,6 +167,14 @@ class _StockCheckScreenState extends State<StockCheckScreen> {
       );
     }
 
+    final items = _applyFilter(provider.products);
+
+    if (items.isEmpty) {
+      return const Center(
+        child: Text('Tidak ada produk untuk filter ini'),
+      );
+    }
+
     return RefreshIndicator(
       onRefresh: () => provider.loadProducts(),
       child: LayoutBuilder(
@@ -121,12 +193,106 @@ class _StockCheckScreenState extends State<StockCheckScreen> {
               crossAxisSpacing: 14,
               childAspectRatio: 0.78,
             ),
-            itemCount: provider.products.length,
+            itemCount: items.length,
             itemBuilder: (context, index) {
-              return _StockCard(product: provider.products[index]);
+              return _StockCard(product: items[index]);
             },
           );
         },
+      ),
+    );
+  }
+
+  /// Terapkan filter kategori lalu urutkan sesuai pilihan dropdown Urutkan.
+  List<Product> _applyFilter(List<Product> products) {
+    final result = _selectedCategory == 'Semua'
+        ? [...products]
+        : products
+            .where((p) =>
+                p.category.toLowerCase() == _selectedCategory.toLowerCase())
+            .toList();
+
+    switch (_selectedSort) {
+      case 'Terendah':
+        result.sort((a, b) => a.stock.compareTo(b.stock));
+      case 'Terbanyak':
+        result.sort((a, b) => b.stock.compareTo(a.stock));
+      case 'A–Z':
+        result.sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
+      case 'Z–A':
+        result.sort(
+          (a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()),
+        );
+    }
+    return result;
+  }
+}
+
+/// Dropdown filter bergaya sama dengan search bar (putih, border membulat).
+class _FilterDropdown extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final List<String> items;
+  final ValueChanged<String> onChanged;
+
+  const _FilterDropdown({
+    required this.icon,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border, width: 1.2),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppColors.textMuted),
+          const SizedBox(width: 8),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: value,
+                isExpanded: true,
+                isDense: true,
+                borderRadius: BorderRadius.circular(12),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 20,
+                  color: AppColors.textMuted,
+                ),
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textDark,
+                ),
+                items: [
+                  for (final item in items)
+                    DropdownMenuItem<String>(
+                      value: item,
+                      child: Text(
+                        item,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: (newValue) {
+                  if (newValue != null) onChanged(newValue);
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

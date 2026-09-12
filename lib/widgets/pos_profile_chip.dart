@@ -197,6 +197,7 @@ class PosProfileChip extends StatelessWidget {
       padding: EdgeInsets.zero,
       position: PopupMenuPosition.under,
       offset: const Offset(0, 6),
+      color: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: (value) {
         if (value == 'profil') {

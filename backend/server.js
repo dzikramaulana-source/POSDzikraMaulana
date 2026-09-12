@@ -10,6 +10,7 @@ const reportRoutes = require('./src/routes/reportRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const shiftRoutes = require('./src/routes/shiftRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
+const settingRoutes = require('./src/routes/settingRoutes');
 const whatsappRoutes = require('./src/routes/whatsappRoutes');
 const whatsappService = require('./src/services/whatsappService');
 
@@ -34,6 +35,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/shifts', shiftRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/settings', settingRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 
 // Error handler 404

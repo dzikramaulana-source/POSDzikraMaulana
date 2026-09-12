@@ -6,6 +6,7 @@ import 'providers/cart_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/report_provider.dart';
+import 'providers/setting_provider.dart';
 import 'providers/shift_provider.dart';
 import 'providers/transaction_history_provider.dart';
 import 'providers/user_provider.dart';
@@ -34,6 +35,7 @@ class PosApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TransactionHistoryProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ShiftProvider()),
+        ChangeNotifierProvider(create: (_) => SettingProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: MaterialApp(
@@ -68,13 +70,16 @@ class _AuthGateState extends State<AuthGate> {
     if (mounted) setState(() => _checked = true);
   }
 
-  // Nyalakan polling notifikasi saat login, matikan saat logout
-  void _syncNotificationPolling(bool isLoggedIn) {
+  // Nyalakan polling notifikasi & muat pengaturan saat login, matikan saat logout
+  void _syncSessionProviders(bool isLoggedIn) {
     final provider = context.read<NotificationProvider>();
     if (isLoggedIn) {
       provider.startPolling();
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) provider.refresh();
+        if (mounted) {
+          provider.refresh();
+          context.read<SettingProvider>().load();
+        }
       });
     } else {
       provider.stopPolling();
@@ -91,7 +96,7 @@ class _AuthGateState extends State<AuthGate> {
       );
     }
 
-    _syncNotificationPolling(authProvider.isLoggedIn);
+    _syncSessionProviders(authProvider.isLoggedIn);
 
     return authProvider.isLoggedIn
         ? const DashboardScreen()

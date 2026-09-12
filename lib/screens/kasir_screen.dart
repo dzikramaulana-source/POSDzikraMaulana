@@ -6,6 +6,7 @@ import '../models/transaction.dart';
 import '../providers/cart_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/report_provider.dart';
+import '../providers/setting_provider.dart';
 import '../providers/shift_provider.dart';
 import '../services/transaction_service.dart';
 import '../utils/formatter.dart';
@@ -15,14 +16,22 @@ import '../utils/whatsapp_sender.dart';
 import '../theme/app_colors.dart';
 import '../widgets/pos_app_bar_actions.dart';
 
-/// Tarif Pajak Pertambahan Nilai (PPN) yang dikenakan per transaksi.
-const double kPpnRate = 0.10;
-
 /// Besaran PPN dari suatu subtotal (dibulatkan ke rupiah penuh).
-double _ppnOf(double subtotal) => (subtotal * kPpnRate).roundToDouble();
+/// [rate] adalah tarif PPN sebagai pecahan (mis. 0.10), diambil dari pengaturan sistem.
+double _ppnOf(double subtotal, double rate) => (subtotal * rate).roundToDouble();
 
 /// Total yang harus dibayar = subtotal + PPN.
-double _totalWithPpn(double subtotal) => subtotal + _ppnOf(subtotal);
+double _totalWithPpn(double subtotal, double rate) => subtotal + _ppnOf(subtotal, rate);
+
+/// Format tarif PPN (pecahan) menjadi label persen, mis. 0.10 -> "10".
+String _formatTaxPercent(double rate) {
+  final percent = rate * 100;
+  if (percent == percent.roundToDouble()) return percent.toStringAsFixed(0);
+  return percent
+      .toStringAsFixed(2)
+      .replaceFirst(RegExp(r'0+$'), '')
+      .replaceFirst(RegExp(r'\.$'), '');
+}
 
 class KasirScreen extends StatefulWidget {
   const KasirScreen({super.key});
@@ -40,6 +49,7 @@ class _KasirScreenState extends State<KasirScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProductProvider>().loadProducts();
+      context.read<SettingProvider>().load();
     });
   }
 
@@ -57,10 +67,12 @@ class _KasirScreenState extends State<KasirScreen> {
     final cart = context.read<CartProvider>();
     if (cart.isEmpty) return;
 
+    final taxRate = context.read<SettingProvider>().taxRateFraction;
+
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _PaymentSheet(total: _totalWithPpn(cart.total)),
+      builder: (context) => _PaymentSheet(total: _totalWithPpn(cart.total, taxRate)),
     );
   }
 
@@ -68,6 +80,7 @@ class _KasirScreenState extends State<KasirScreen> {
   Widget build(BuildContext context) {
     final productProvider = context.watch<ProductProvider>();
     final cart = context.watch<CartProvider>();
+    final taxRate = context.watch<SettingProvider>().taxRateFraction;
 
     // Lebar panel order menyesuaikan lebar layar, dibatasi 320–440.
     final cartWidth =
@@ -96,6 +109,7 @@ class _KasirScreenState extends State<KasirScreen> {
                   cart: cart,
                   onCheckout: _checkout,
                   width: cartWidth,
+                  taxRate: taxRate,
                 ),
               ],
             ),
@@ -689,10 +703,14 @@ class _CartPanel extends StatelessWidget {
   final VoidCallback onCheckout;
   final double width;
 
+  /// Tarif PPN sebagai pecahan (mis. 0.10) dari pengaturan sistem.
+  final double taxRate;
+
   const _CartPanel({
     required this.cart,
     required this.onCheckout,
     required this.width,
+    required this.taxRate,
   });
 
   double get _subtotal => cart.total;
@@ -700,8 +718,8 @@ class _CartPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final subtotal = _subtotal;
-    final tax = _ppnOf(subtotal);
-    final total = _totalWithPpn(subtotal);
+    final tax = _ppnOf(subtotal, taxRate);
+    final total = _totalWithPpn(subtotal, taxRate);
 
     return Container(
       width: width,
@@ -795,8 +813,9 @@ class _CartPanel extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 _SummaryRow(
-                  label:
-                      'Pajak PPN (${(kPpnRate * 100).round()}%)',
+                  label: taxRate > 0
+                      ? 'Pajak PPN (${_formatTaxPercent(taxRate)}%)'
+                      : 'Pajak PPN',
                   value: formatRupiah(tax),
                 ),
                 Container(

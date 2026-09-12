@@ -12,6 +12,7 @@ import '../widgets/pos_sidebar.dart';
 import 'kasir_screen.dart';
 import 'product_form_screen.dart';
 import 'report_screen.dart';
+import 'settings_screen.dart';
 import 'shift_screen.dart';
 import 'stock_check_screen.dart';
 import 'transaction_history_screen.dart';
@@ -33,7 +34,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   late final bool _isAdmin;
   late final List<PosSidebarItem> _items;
-  final List<Widget?> _pageCache = List.filled(5, null);
+  late final List<Widget?> _pageCache;
   int _index = 0;
 
   @override
@@ -43,6 +44,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _items = _buildItems(_isAdmin);
     // Cache halaman dengan instance yang sama dari _items (bukan duplikat),
     // supaya state halaman awal tidak dibuat dua kali.
+    _pageCache = List<Widget?>.filled(_items.length, null);
     for (var i = 0; i < _pageCache.length; i++) {
       _pageCache[i] = _items[i].page;
     }
@@ -80,6 +82,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           selectedIcon: Icons.account_balance_wallet,
           label: 'Kas / Shift',
           page: ShiftScreen(),
+        ),
+        PosSidebarItem(
+          icon: Icons.settings_outlined,
+          selectedIcon: Icons.settings,
+          label: 'Pengaturan Sistem',
+          page: SettingsScreen(),
         ),
       ];
     }
@@ -395,14 +403,28 @@ class _ProductHomePageState extends State<_ProductHomePage> {
               ),
             )
           else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: filtered.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final product = filtered[index];
-                return _buildProductCard(context, product);
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                // Grid produk: jumlah kolom mengikuti lebar area konten agar
+                // tiap card tetap proporsional dan gambar terlihat jelas.
+                final cols = width >= 1150
+                    ? 4
+                    : (width >= 880 ? 3 : (width >= 580 ? 2 : 1));
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 14,
+                    childAspectRatio: 0.8,
+                  ),
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) {
+                    return _buildProductCard(context, filtered[index]);
+                  },
+                );
               },
             ),
         ],
@@ -473,122 +495,195 @@ class _ProductHomePageState extends State<_ProductHomePage> {
   Widget _buildProductCard(BuildContext context, Product product) {
     final outOfStock = product.stock <= 0;
     final lowStock = !outOfStock && product.stock <= 5;
+    final statusColor =
+        outOfStock ? AppColors.danger : (lowStock ? AppColors.warning : AppColors.success);
+    final statusBg =
+        outOfStock ? AppColors.dangerLight : (lowStock ? AppColors.warningLight : AppColors.successLight);
+    final statusLabel = outOfStock ? 'Stok Habis' : (lowStock ? 'Stok Menipis' : 'Stok Tersedia');
+    final statusIcon =
+        outOfStock ? Icons.cancel_rounded : (lowStock ? Icons.warning_amber_rounded : Icons.check_circle_rounded);
     final margin = product.price > 0 && product.cost > 0
         ? ((product.price - product.cost) / product.price * 100).toStringAsFixed(0)
         : null;
 
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
         boxShadow: AppColors.cardShadow,
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          width: 48,
-          height: 48,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: product.imageUrl != null
-              ? Image.network(
-                  product.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const Icon(Icons.inventory_2_outlined, color: AppColors.primary),
-                )
-              : const Icon(Icons.inventory_2_outlined, color: AppColors.primary),
-        ),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                product.name,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppColors.textDark),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Text(
-                product.sku,
-                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: AppColors.textMedium),
-              ),
-            ),
-          ],
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openEditSheet(product),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Jual: ${formatRupiah(product.price)}',
-                style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.success, fontSize: 13),
-              ),
-              if (product.cost > 0)
-                Text(
-                  'Modal: ${formatRupiah(product.cost)}',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                ),
-              if (margin != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    '+$margin% Laba',
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
-                  ),
-                ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: outOfStock ? AppColors.danger : (lowStock ? AppColors.warning : AppColors.success),
-                      shape: BoxShape.circle,
+              // Gambar produk dengan badge status stok.
+              Expanded(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Container(
+                      color: const Color(0xFFF1F5F9),
+                      child: product.imageUrl != null
+                          ? Image.network(
+                              product.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => const Center(
+                                child: Icon(Icons.inventory_2_outlined, size: 32, color: AppColors.primary),
+                              ),
+                            )
+                          : const Center(
+                              child: Icon(Icons.inventory_2_outlined, size: 32, color: AppColors.primary),
+                            ),
                     ),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    'Stok: ${product.stock}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: outOfStock ? AppColors.danger : (lowStock ? AppColors.warning : AppColors.textDark),
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: statusBg,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(statusIcon, color: statusColor, size: 11),
+                            const SizedBox(width: 4),
+                            Text(
+                              statusLabel,
+                              style: TextStyle(
+                                color: statusColor,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
-        trailing: FilledButton.tonal(
-          onPressed: () => _openEditSheet(product),
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.edit_rounded, size: 15),
-              SizedBox(width: 4),
-              Text('Edit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        height: 1.25,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceVariant,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              product.sku,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontFamily: 'monospace',
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (margin != null) ...[
+                          const SizedBox(width: 5),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryLight,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '+$margin% Laba',
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      formatRupiah(product.price),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: AppColors.success,
+                      ),
+                    ),
+                    if (product.cost > 0)
+                      Text(
+                        'Modal: ${formatRupiah(product.cost)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                      ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Stok: ${product.stock}',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: statusColor,
+                          ),
+                        ),
+                        const Spacer(),
+                        SizedBox(
+                          height: 28,
+                          child: FilledButton.tonalIcon(
+                            onPressed: () => _openEditSheet(product),
+                            icon: const Icon(Icons.edit_rounded, size: 14),
+                            label: const Text(
+                              'Edit',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                            ),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),

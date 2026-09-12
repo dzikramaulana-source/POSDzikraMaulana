@@ -27,6 +27,9 @@ class Transaction {
   final List<TransactionItem> items;
   final double total;
   final double tax;
+
+  /// Tarif PPN yang dipakai saat transaksi (persen, mis. 10 = 10%).
+  final double taxRate;
   final double profit;
   final String paymentMethod;
   final double cashReceived;
@@ -40,6 +43,7 @@ class Transaction {
     required this.items,
     required this.total,
     required this.tax,
+    required this.taxRate,
     required this.profit,
     required this.paymentMethod,
     required this.cashReceived,
@@ -68,6 +72,7 @@ class Transaction {
       items: items,
       total: (json['total'] as num?)?.toDouble() ?? 0,
       tax: (json['tax'] as num?)?.toDouble() ?? 0,
+      taxRate: (json['taxRate'] as num?)?.toDouble() ?? 0,
       profit: (json['profit'] as num?)?.toDouble() ?? 0,
       paymentMethod: json['paymentMethod']?.toString() ?? 'cash',
       cashReceived: (json['cashReceived'] as num?)?.toDouble() ?? 0,

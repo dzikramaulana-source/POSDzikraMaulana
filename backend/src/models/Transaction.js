@@ -31,6 +31,11 @@ const transactionSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Tarif PPN yang dipakai saat transaksi (dalam persen, mis. 10 = 10%).
+    taxRate: {
+      type: Number,
+      default: 0,
+    },
     subtotal: {
       type: Number,
       default: 0,

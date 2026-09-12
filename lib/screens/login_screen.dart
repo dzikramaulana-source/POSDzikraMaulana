@@ -415,6 +415,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       label: const Text('Admin (admin / admin123)'),
                       onPressed: () => _fillCredentials('admin', 'admin123'),
                     ),
+                    ActionChip(
+                      avatar: const Icon(Icons.point_of_sale_outlined, size: 16),
+                      label: const Text('Kasir 1 (kasir1 / kasir123)'),
+                      onPressed: () => _fillCredentials('kasir1', 'kasir123'),
+                    ),
+                    ActionChip(
+                      avatar: const Icon(Icons.point_of_sale_outlined, size: 16),
+                      label: const Text('Kasir 2 (kasir2 / kasir234)'),
+                      onPressed: () => _fillCredentials('kasir2', 'kasir234'),
+                    ),
                   ],
                 ),
               ],

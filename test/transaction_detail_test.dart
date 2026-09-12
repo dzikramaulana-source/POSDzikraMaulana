@@ -20,6 +20,7 @@ void main() {
       ],
       total: 20000,
       tax: 0,
+      taxRate: 0,
       profit: 10000,
       paymentMethod: 'cash',
       cashReceived: 50000,
