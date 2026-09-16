@@ -3,6 +3,7 @@ const {
   getPairingPage,
   getStatus,
   getQr,
+  searchRecipients,
   sendReceiptDocument,
   logout,
   restart,
@@ -17,6 +18,8 @@ router.get('/', getPairingPage);
 
 router.get('/status', protect, getStatus);
 router.get('/qr', protect, getQr);
+// Cari nomor pelanggan yang pernah dikirimi struk (autocomplete)
+router.get('/recipients', protect, searchRecipients);
 // Kirim PDF struk ke nomor WhatsApp pelanggan (field file + phone)
 router.post(
   '/send-document',

@@ -4,6 +4,18 @@ import '../config/api_config.dart';
 import 'api_service.dart';
 
 class WhatsAppService {
+  // Cari nomor pelanggan yang pernah dikirimi struk berdasarkan 4 digit
+  // terakhirnya lewat backend (endpoint GET /whatsapp/recipients).
+  static Future<List<String>> searchRecipientsByLast4(String last4) async {
+    final data = await ApiService.get('/whatsapp/recipients?last4=$last4');
+    if (data is! List) return const <String>[];
+    return data
+        .whereType<Map>()
+        .map((row) => row['phone']?.toString() ?? '')
+        .where((phone) => phone.isNotEmpty)
+        .toList();
+  }
+
   // Kirim PDF struk ke nomor WhatsApp pelanggan lewat backend
   // (endpoint POST /whatsapp/send-document).
   static Future<Map<String, dynamic>> sendReceiptDocument({

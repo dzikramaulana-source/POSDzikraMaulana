@@ -10,7 +10,8 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['transaction', 'stock', 'broadcast'],
+      // stock_low = stok menipis (1-5), stock_out = stok habis (0)
+      enum: ['transaction', 'stock_low', 'stock_out', 'broadcast'],
       required: true,
     },
     title: {

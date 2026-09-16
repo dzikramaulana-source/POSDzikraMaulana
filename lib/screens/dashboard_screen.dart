@@ -8,6 +8,7 @@ import '../providers/product_provider.dart';
 import '../theme/app_colors.dart';
 import '../utils/formatter.dart';
 import '../widgets/pos_app_bar_actions.dart';
+import '../widgets/pos_filter_dropdown.dart';
 import '../widgets/pos_sidebar.dart';
 import 'kasir_screen.dart';
 import 'product_form_screen.dart';
@@ -156,6 +157,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
+/// Opsi dropdown kategori pada Manajemen Produk.
+const List<String> _categoryOptions = ['Semua', 'Makanan', 'Minuman', 'Camilan'];
+
+/// Opsi dropdown pengurutan: berdasarkan stok (Terendah/Terbanyak) atau nama (A–Z/Z–A).
+const List<String> _sortOptions = ['Terendah', 'Terbanyak', 'A–Z', 'Z–A'];
+
 /// Halaman Manajemen Produk admin: pencarian & daftar produk dengan ringkasan KPI.
 class _ProductHomePage extends StatefulWidget {
   const _ProductHomePage();
@@ -166,7 +173,12 @@ class _ProductHomePage extends StatefulWidget {
 
 class _ProductHomePageState extends State<_ProductHomePage> {
   final _searchController = TextEditingController();
-  String _stockFilter = 'Semua';
+
+  /// Kategori yang dipilih. 'Semua' berarti seluruh kategori.
+  String _selectedCategory = 'Semua';
+
+  /// Urutan yang dipilih.
+  String _selectedSort = 'Terendah';
 
   @override
   void initState() {
@@ -184,6 +196,32 @@ class _ProductHomePageState extends State<_ProductHomePage> {
 
   void _search(String query) {
     context.read<ProductProvider>().loadProducts(search: query.trim());
+  }
+
+  /// Terapkan filter kategori lalu urutkan sesuai pilihan dropdown Stok.
+  List<Product> _applyFilter(List<Product> products) {
+    final result = _selectedCategory == 'Semua'
+        ? [...products]
+        : products
+            .where((p) =>
+                p.category.toLowerCase() == _selectedCategory.toLowerCase())
+            .toList();
+
+    switch (_selectedSort) {
+      case 'Terendah':
+        result.sort((a, b) => a.stock.compareTo(b.stock));
+      case 'Terbanyak':
+        result.sort((a, b) => b.stock.compareTo(a.stock));
+      case 'A–Z':
+        result.sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
+      case 'Z–A':
+        result.sort(
+          (a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()),
+        );
+    }
+    return result;
   }
 
   Future<void> _addProduct() async {
@@ -205,6 +243,72 @@ class _ProductHomePageState extends State<_ProductHomePage> {
     if (mounted) {
       context.read<ProductProvider>().loadProducts();
     }
+  }
+
+  /// Bar filter: search bar diikuti dropdown Kategori & Stok.
+  /// Saat layar sempit, dropdown turun ke baris kedua agar tidak overflow.
+  Widget _buildFilterBar() {
+    final searchField = TextField(
+      controller: _searchController,
+      onChanged: _search,
+      decoration: InputDecoration(
+        hintText: 'Cari nama produk, SKU, atau kategori...',
+        prefixIcon: const Icon(Icons.search_rounded),
+        suffixIcon: _searchController.text.isEmpty
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.clear_rounded),
+                onPressed: () {
+                  _searchController.clear();
+                  _search('');
+                },
+              ),
+      ),
+    );
+
+    final categoryDropdown = PosFilterDropdown(
+      icon: Icons.category_outlined,
+      value: _selectedCategory,
+      items: _categoryOptions,
+      onChanged: (value) => setState(() => _selectedCategory = value),
+    );
+
+    final sortDropdown = PosFilterDropdown(
+      icon: Icons.sort_rounded,
+      value: _selectedSort,
+      items: _sortOptions,
+      onChanged: (value) => setState(() => _selectedSort = value),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 900) {
+          return Row(
+            children: [
+              Expanded(flex: 5, child: searchField),
+              const SizedBox(width: 12),
+              Expanded(flex: 2, child: categoryDropdown),
+              const SizedBox(width: 12),
+              Expanded(flex: 2, child: sortDropdown),
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            searchField,
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: categoryDropdown),
+                const SizedBox(width: 12),
+                Expanded(child: sortDropdown),
+              ],
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -234,13 +338,8 @@ class _ProductHomePageState extends State<_ProductHomePage> {
     final productProvider = context.watch<ProductProvider>();
     final products = productProvider.products;
 
-    // Filter lokal berdasarkan status stok
-    final filtered = products.where((p) {
-      if (_stockFilter == 'Stok Tersedia') return p.stock > 5;
-      if (_stockFilter == 'Stok Menipis') return p.stock > 0 && p.stock <= 5;
-      if (_stockFilter == 'Stok Habis') return p.stock <= 0;
-      return true;
-    }).toList();
+    // Filter kategori + urutkan secara lokal
+    final filtered = _applyFilter(products);
 
     // Hitung KPI
     final totalProducts = products.length;
@@ -303,7 +402,7 @@ class _ProductHomePageState extends State<_ProductHomePage> {
           ),
           const SizedBox(height: 20),
 
-          // Toolbar: Search + Stock Status Filter
+          // Toolbar: Search + Dropdown Kategori & Stok
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -312,41 +411,7 @@ class _ProductHomePageState extends State<_ProductHomePage> {
               border: Border.all(color: AppColors.border),
               boxShadow: AppColors.cardShadow,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextField(
-                  controller: _searchController,
-                  onChanged: _search,
-                  decoration: InputDecoration(
-                    hintText: 'Cari nama produk, SKU, atau kategori...',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: _searchController.text.isEmpty
-                        ? null
-                        : IconButton(
-                            icon: const Icon(Icons.clear_rounded),
-                            onPressed: () {
-                              _searchController.clear();
-                              _search('');
-                            },
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final filter in ['Semua', 'Stok Tersedia', 'Stok Menipis', 'Stok Habis'])
-                      ChoiceChip(
-                        label: Text(filter),
-                        selected: _stockFilter == filter,
-                        onSelected: (_) => setState(() => _stockFilter = filter),
-                      ),
-                  ],
-                ),
-              ],
-            ),
+            child: _buildFilterBar(),
           ),
           const SizedBox(height: 16),
 
@@ -395,7 +460,7 @@ class _ProductHomePageState extends State<_ProductHomePage> {
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      'Coba ubah kata kunci atau filter status stok',
+                      'Coba ubah kata kunci, kategori, atau urutan',
                       style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                     ),
                   ],

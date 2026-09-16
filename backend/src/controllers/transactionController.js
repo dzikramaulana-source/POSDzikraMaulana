@@ -1,5 +1,6 @@
 const Transaction = require('../models/Transaction');
 const Product = require('../models/Product');
+const User = require('../models/User');
 const { createNotification } = require('./notificationController');
 const { getTaxRate } = require('./settingController');
 
@@ -9,17 +10,19 @@ const formatRupiah = (n) => {
   return 'Rp' + s.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
-// Helper: buat notifikasi untuk kasir pelaku transaksi (tidak menggagalkan transaksi)
-const notifyKasir = async ({ kasirId, notifications }) => {
+// Helper: kirim notifikasi ke daftar penerima (tidak menggagalkan transaksi)
+const notifyUsers = async ({ recipientIds, notifications }) => {
   try {
-    for (const n of notifications) {
-      await createNotification({
-        recipient: kasirId,
-        type: n.type,
-        title: n.title,
-        body: n.body,
-        relatedId: n.relatedId || '',
-      });
+    for (const recipient of recipientIds) {
+      for (const n of notifications) {
+        await createNotification({
+          recipient,
+          type: n.type,
+          title: n.title,
+          body: n.body,
+          relatedId: n.relatedId || '',
+        });
+      }
     }
   } catch (err) {
     console.error('Gagal membuat notifikasi:', err.message);
@@ -127,16 +130,20 @@ const createTransaction = async (req, res) => {
 
     const populated = await Transaction.findById(transaction._id).populate('createdBy', 'name username');
 
-    // Notifikasi untuk kasir pelaku: transaksi berhasil + produk stok menipis/habis
+    // Notifikasi untuk kasir pelaku + seluruh admin agar transaksi kasir
+    // otomatis terpantau dari sisi admin.
+    const adminList = await User.find({ role: 'admin' }).select('_id');
+    const recipientIds = [user._id, ...adminList.map((a) => a._id)];
+
     const notifications = [
       {
         type: 'transaction',
         title: 'Transaksi Berhasil',
-        body: `${invoiceNumber} • Total ${formatRupiah(total)}`,
+        body: `${invoiceNumber} • Total ${formatRupiah(total)} • ${user.name}`,
         relatedId: invoiceNumber,
       },
       ...lowStockItems.map((p) => ({
-        type: 'stock',
+        type: p.stock === 0 ? 'stock_out' : 'stock_low',
         title: p.stock === 0 ? 'Stok Habis' : 'Stok Menipis',
         body:
           p.stock === 0
@@ -145,7 +152,7 @@ const createTransaction = async (req, res) => {
         relatedId: p.id ? p.id.toString() : '',
       })),
     ];
-    await notifyKasir({ kasirId: user._id, notifications });
+    await notifyUsers({ recipientIds, notifications });
 
     res.status(201).json({
       message: 'Transaksi berhasil',

@@ -74,13 +74,13 @@ class NotificationProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> markAllRead({NotificationType? type}) async {
-    final typeName = type == null ? null : _typeName(type);
+  Future<void> markAllRead({List<NotificationType>? types}) async {
+    final typeNames = types?.map(_typeName).toList();
     try {
-      await NotificationService.markAllRead(type: typeName);
+      await NotificationService.markAllRead(types: typeNames);
       _items = [
         for (final n in _items)
-          if (type == null || n.type == type)
+          if (types == null || types.contains(n.type))
             AppNotification(
               id: n.id,
               type: n.type,
@@ -141,8 +141,10 @@ String _typeName(NotificationType type) {
   switch (type) {
     case NotificationType.transaction:
       return 'transaction';
-    case NotificationType.stock:
-      return 'stock';
+    case NotificationType.stockLow:
+      return 'stock_low';
+    case NotificationType.stockOut:
+      return 'stock_out';
     case NotificationType.broadcast:
       return 'broadcast';
   }

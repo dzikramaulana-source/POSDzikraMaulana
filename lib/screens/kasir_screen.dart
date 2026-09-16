@@ -9,6 +9,7 @@ import '../providers/report_provider.dart';
 import '../providers/setting_provider.dart';
 import '../providers/shift_provider.dart';
 import '../services/transaction_service.dart';
+import '../services/whatsapp_service.dart';
 import '../utils/formatter.dart';
 import '../utils/payment_method.dart';
 import '../utils/receipt_printer.dart';
@@ -1481,12 +1482,33 @@ class _PaymentSuccessDialog extends StatefulWidget {
 
 class _PaymentSuccessDialogState extends State<_PaymentSuccessDialog> {
   final _phoneController = TextEditingController();
+  final _phoneFocusNode = FocusNode();
   bool _isSending = false;
+  // Penanda permintaan saran terakhir agar permintaan lama yang selesai
+  // belakangan tidak menimpa hasil yang lebih baru.
+  int _searchToken = 0;
 
   @override
   void dispose() {
     _phoneController.dispose();
+    _phoneFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<Iterable<String>> _suggestNumbers(String input) async {
+    final suffix = lastFourDigitsOf(input);
+    if (suffix.isEmpty) return const <String>[];
+
+    final token = ++_searchToken;
+    // Beri jeda singkat supaya pencarian tidak dipanggil tiap ketikan.
+    await Future.delayed(const Duration(milliseconds: 250));
+    if (token != _searchToken) return const <String>[];
+
+    try {
+      return await WhatsAppService.searchRecipientsByLast4(suffix);
+    } catch (_) {
+      return const <String>[];
+    }
   }
 
   Future<void> _sendToWhatsApp() async {
@@ -1582,24 +1604,80 @@ class _PaymentSuccessDialogState extends State<_PaymentSuccessDialog> {
             ),
             const SizedBox(height: 16),
 
-            // Kirim WhatsApp
-            TextField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9+\s-]')),
-              ],
-              decoration: InputDecoration(
-                labelText: 'Kirim Struk ke WhatsApp Pelanggan',
-                hintText: 'Contoh: 08123456789',
-                prefixIcon: const Icon(Icons.chat_outlined, size: 20),
-                suffixIcon: IconButton(
-                  icon: _isSending
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.send_rounded, color: AppColors.success),
-                  onPressed: _isSending ? null : _sendToWhatsApp,
-                ),
-              ),
+            // Kirim WhatsApp (nomor yang pernah dipakai muncul otomatis
+            // setelah 4 digit terakhirnya diketik)
+            Autocomplete<String>(
+              textEditingController: _phoneController,
+              focusNode: _phoneFocusNode,
+              displayStringForOption: formatWhatsAppNumber,
+              optionsBuilder: (TextEditingValue value) =>
+                  _suggestNumbers(value.text),
+              fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                return TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9+\s-]')),
+                  ],
+                  onSubmitted: (_) => onFieldSubmitted(),
+                  decoration: InputDecoration(
+                    labelText: 'Kirim Struk ke WhatsApp Pelanggan',
+                    hintText: 'Contoh: 08123456789',
+                    prefixIcon: const Icon(Icons.chat_outlined, size: 20),
+                    suffixIcon: IconButton(
+                      icon: _isSending
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.send_rounded, color: AppColors.success),
+                      onPressed: _isSending ? null : _sendToWhatsApp,
+                    ),
+                  ),
+                );
+              },
+              optionsViewBuilder: (context, onSelected, options) {
+                final suggestions = options.toList();
+                return Align(
+                  alignment: Alignment.topLeft,
+                  child: Material(
+                    color: AppColors.surface,
+                    elevation: 6,
+                    borderRadius: BorderRadius.circular(12),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 200, maxWidth: 360),
+                      child: ListView.builder(
+                        padding: EdgeInsets.zero,
+                        shrinkWrap: true,
+                        itemCount: suggestions.length,
+                        itemBuilder: (context, index) {
+                          final number = suggestions[index];
+                          return InkWell(
+                            onTap: () => onSelected(number),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.history_rounded, size: 18, color: AppColors.textMuted),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      formatWhatsAppNumber(number),
+                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                  const Text(
+                                    'Gunakan',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),

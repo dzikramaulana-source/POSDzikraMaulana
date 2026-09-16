@@ -267,45 +267,43 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   }
 
   Future<void> _showKasirPicker(BuildContext context) async {
-    final selected = await showModalBottomSheet<String>(
+    final selected = await showDialog<String>(
       context: context,
       builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: const Text('Filter Kasir'),
-                trailing: IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(),
+        return AlertDialog(
+          title: const Text('Filter Kasir'),
+          contentPadding: const EdgeInsets.only(top: 8, bottom: 4),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 360),
+            child: SingleChildScrollView(
+              child: RadioGroup<String>(
+                groupValue: _kasirId ?? '',
+                onChanged: (v) => Navigator.of(context).pop(v),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const RadioListTile<String>(
+                      title: Text('Semua Kasir'),
+                      value: '',
+                    ),
+                    ..._kasirList.map((k) {
+                      return RadioListTile<String>(
+                        title: Text(k.name),
+                        subtitle: Text('@${k.username}'),
+                        value: k.id,
+                      );
+                    }),
+                  ],
                 ),
               ),
-              const Divider(height: 1),
-              Flexible(
-                child: RadioGroup<String>(
-                  groupValue: _kasirId ?? '',
-                  onChanged: (v) => Navigator.of(context).pop(v),
-                  child: ListView(
-                    shrinkWrap: true,
-                    children: [
-                      const RadioListTile<String>(
-                        title: Text('Semua Kasir'),
-                        value: '',
-                      ),
-                      ..._kasirList.map((k) {
-                        return RadioListTile<String>(
-                          title: Text(k.name),
-                          subtitle: Text('@${k.username}'),
-                          value: k.id,
-                        );
-                      }),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Tutup'),
+            ),
+          ],
         );
       },
     );

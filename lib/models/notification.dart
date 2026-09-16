@@ -1,10 +1,12 @@
 /// Jenis notifikasi.
-enum NotificationType { transaction, stock, broadcast }
+enum NotificationType { transaction, stockLow, stockOut, broadcast }
 
 NotificationType _parseType(String? value) {
   switch (value) {
-    case 'stock':
-      return NotificationType.stock;
+    case 'stock_low':
+      return NotificationType.stockLow;
+    case 'stock_out':
+      return NotificationType.stockOut;
     case 'broadcast':
       return NotificationType.broadcast;
     default:
@@ -12,7 +14,7 @@ NotificationType _parseType(String? value) {
   }
 }
 
-/// Satu notifikasi untuk kasir (transaksi, stok, atau pengumuman).
+/// Satu notifikasi (transaksi berhasil, stok menipis, stok habis, atau pengumuman).
 class AppNotification {
   final String id;
   final NotificationType type;

@@ -76,12 +76,13 @@ const markRead = async (req, res) => {
 // @desc    Tandai semua notifikasi sudah dibaca
 // @route   POST /api/notifications/read-all
 // @access  Private
-// Query ?type=transaction|stock|broadcast → hanya tipe tsb.
+// Query ?type=transaction|stock_low|stock_out|broadcast → hanya tipe tsb.
+// Boleh lebih dari satu tipe sekaligus, dipisah koma (mis. stock_low,stock_out).
 const markAllRead = async (req, res) => {
   try {
     const { type } = req.query;
     const filter = { recipient: req.user._id, read: false };
-    if (type) filter.type = type;
+    if (type) filter.type = { $in: type.split(',') };
     const result = await Notification.updateMany(filter, { read: true });
     res.json({ message: 'Semua notifikasi ditandai dibaca', modified: result.modifiedCount });
   } catch (error) {

@@ -3,7 +3,7 @@ import 'api_service.dart';
 
 class NotificationService {
   // Daftar notifikasi milik user yang login.
-  // [type] opsional: 'transaction', 'stock', atau 'broadcast'.
+  // [type] opsional: 'transaction', 'stock_low', 'stock_out', atau 'broadcast'.
   static Future<List<AppNotification>> getNotifications({
     String? type,
   }) async {
@@ -28,10 +28,13 @@ class NotificationService {
   }
 
   // Tandai semua notifikasi sudah dibaca.
-  // [type] opsional: batasi ke tipe tertentu (transaction/stock/broadcast).
-  static Future<void> markAllRead({String? type}) async {
+  // [types] opsional: batasi ke tipe tertentu (boleh lebih dari satu, mis.
+  // ['stock_low', 'stock_out'] untuk tab Stok).
+  static Future<void> markAllRead({List<String>? types}) async {
     var path = '/notifications/read-all';
-    if (type != null) path = '$path?type=$type';
+    if (types != null && types.isNotEmpty) {
+      path = '$path?type=${types.join(',')}';
+    }
     await ApiService.post(path, {});
   }
 

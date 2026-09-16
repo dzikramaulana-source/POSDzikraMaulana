@@ -19,6 +19,31 @@ String normalizeWhatsAppNumber(String input) {
   return digits;
 }
 
+/// Ambil 4 digit terakhir dari [input], atau `''` bila digitnya belum
+/// mencapai 4. Dipakai untuk mencari nomor pelanggan yang pernah dipakai.
+String lastFourDigitsOf(String input) {
+  final digits = input.replaceAll(RegExp(r'[^0-9]'), '');
+  return digits.length < 4 ? '' : digits.substring(digits.length - 4);
+}
+
+/// Format nomor WhatsApp menjadi bentuk lokal yang mudah dibaca.
+///
+/// Contoh: "6281234567890" -> "0812-3456-7890".
+String formatWhatsAppNumber(String input) {
+  var digits = input.replaceAll(RegExp(r'[^0-9]'), '');
+  if (digits.isEmpty) return input;
+  if (digits.startsWith('62')) {
+    digits = '0${digits.substring(2)}';
+  }
+
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i == 4 || (i > 4 && (i - 4) % 4 == 0)) buffer.write('-');
+    buffer.write(digits[i]);
+  }
+  return buffer.toString();
+}
+
 /// Kirim PDF struk transaksi ke nomor WhatsApp pelanggan melalui backend
 /// (endpoint `/whatsapp/send-document`).
 ///

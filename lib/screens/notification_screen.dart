@@ -6,11 +6,13 @@ import '../providers/notification_provider.dart';
 import '../theme/app_colors.dart';
 
 /// Layar daftar notifikasi dengan dua kategori (tab):
-/// - Transaksi Berhasil (type = transaction)
-/// - Stok Habis (type = stock)
+/// - Transaksi (type = transaction)
+/// - Stok (type = stock_low dan stock_out; stok menipis & habis digabung)
 ///
-/// Notifikasi bertipe broadcast (pengumuman admin) tidak ditampilkan di layar
-/// ini. Item belum dibaca ditandai; tap untuk menandai dibaca.
+/// Admin menerima transaksi berhasil dari seluruh kasir, sedangkan kasir hanya
+/// menerima transaksinya sendiri. Notifikasi bertipe broadcast (pengumuman
+/// admin) tidak ditampilkan di layar ini. Item belum dibaca ditandai; tap untuk
+/// menandai dibaca.
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
 
@@ -18,22 +20,62 @@ class NotificationScreen extends StatefulWidget {
   State<NotificationScreen> createState() => _NotificationScreenState();
 }
 
+/// Satu kategori tab pada layar Notifikasi. Satu tab bisa memuat beberapa tipe
+/// (mis. tab Stok memuat stok menipis dan stok habis sekaligus).
+class _NotificationTab {
+  final String label;
+  final List<NotificationType> types;
+  final IconData icon;
+  final String emptyMessage;
+
+  const _NotificationTab({
+    required this.label,
+    required this.types,
+    required this.icon,
+    required this.emptyMessage,
+  });
+}
+
+/// Kategori notifikasi beserta urutan tabnya.
+const List<_NotificationTab> _tabs = [
+  _NotificationTab(
+    label: 'Transaksi',
+    types: [NotificationType.transaction],
+    icon: Icons.receipt_long_outlined,
+    emptyMessage: 'Belum ada notifikasi\ntransaksi berhasil',
+  ),
+  _NotificationTab(
+    label: 'Stok',
+    types: [NotificationType.stockLow, NotificationType.stockOut],
+    icon: Icons.inventory_2_outlined,
+    emptyMessage: 'Belum ada notifikasi\nstok menipis atau habis',
+  ),
+];
+
 class _NotificationScreenState extends State<NotificationScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  int _tabIndex = 0;
 
-  // Tab 0 = transaction, tab 1 = stock.
-  NotificationType get _activeType =>
-      _tabController.index == 0 ? NotificationType.transaction : NotificationType.stock;
+  List<NotificationType> get _activeTypes => _tabs[_tabIndex].types;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: _tabs.length, vsync: this);
+    _tabController.addListener(_handleTabChange);
+  }
+
+  // Bangun ulang layar saat tab berpindah agar aksi AppBar ("Tandai semua
+  // dibaca") mengikuti tab yang sedang aktif.
+  void _handleTabChange() {
+    if (_tabController.index == _tabIndex) return;
+    setState(() => _tabIndex = _tabController.index);
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
   }
@@ -72,16 +114,12 @@ class _NotificationScreenState extends State<NotificationScreen>
                 unselectedLabelStyle:
                     const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
                 tabs: [
-                  _TabLabel(
-                    label: 'Transaksi',
-                    icon: Icons.receipt_long_outlined,
-                    count: _unreadCount(provider, NotificationType.transaction),
-                  ),
-                  _TabLabel(
-                    label: 'Stok Habis',
-                    icon: Icons.inventory_2_outlined,
-                    count: _unreadCount(provider, NotificationType.stock),
-                  ),
+                  for (final tab in _tabs)
+                    _TabLabel(
+                      label: tab.label,
+                      icon: tab.icon,
+                      count: _unreadCount(provider, tab.types),
+                    ),
                 ],
               ),
             ],
@@ -92,8 +130,8 @@ class _NotificationScreenState extends State<NotificationScreen>
             _AppBarAction(
               icon: Icons.done_all_rounded,
               tooltip: 'Tandai semua dibaca',
-              enabled: _unreadCount(provider, _activeType) > 0,
-              onPressed: () => provider.markAllRead(type: _activeType),
+              enabled: _unreadCount(provider, _activeTypes) > 0,
+              onPressed: () => provider.markAllRead(types: _activeTypes),
             ),
           const SizedBox(width: 8),
         ],
@@ -101,8 +139,7 @@ class _NotificationScreenState extends State<NotificationScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildBody(context, provider, NotificationType.transaction),
-          _buildBody(context, provider, NotificationType.stock),
+          for (final tab in _tabs) _buildBody(context, provider, tab),
         ],
       ),
     );
@@ -112,18 +149,18 @@ class _NotificationScreenState extends State<NotificationScreen>
   List<AppNotification> _visibleItems(NotificationProvider provider) {
     return [
       for (final n in provider.items)
-        if (n.type == _activeType) n,
+        if (_activeTypes.contains(n.type)) n,
     ];
   }
 
-  int _unreadCount(NotificationProvider provider, NotificationType type) {
-    return provider.items.where((n) => n.type == type && !n.read).length;
+  int _unreadCount(NotificationProvider provider, List<NotificationType> types) {
+    return provider.items.where((n) => types.contains(n.type) && !n.read).length;
   }
 
   Widget _buildBody(
     BuildContext context,
     NotificationProvider provider,
-    NotificationType type,
+    _NotificationTab tab,
   ) {
     if (provider.isLoading && provider.items.isEmpty) {
       return const Center(
@@ -164,13 +201,12 @@ class _NotificationScreenState extends State<NotificationScreen>
 
     final items = [
       for (final n in provider.items)
-        if (n.type == type) n,
+        if (tab.types.contains(n.type)) n,
     ];
 
     if (items.isEmpty) {
-      final (icon, message) = type == NotificationType.transaction
-          ? (Icons.receipt_long_outlined, 'Belum ada notifikasi\ntransaksi berhasil')
-          : (Icons.inventory_2_outlined, 'Belum ada notifikasi\nstok habis');
+      final icon = tab.icon;
+      final message = tab.emptyMessage;
 
       return Center(
         child: Column(
@@ -312,8 +348,10 @@ class _NotificationCard extends StatelessWidget {
     switch (notification.type) {
       case NotificationType.transaction:
         return (Icons.receipt_long_outlined, AppColors.success, AppColors.successLight);
-      case NotificationType.stock:
-        return (Icons.inventory_2_outlined, AppColors.warning, AppColors.warningLight);
+      case NotificationType.stockLow:
+        return (Icons.warning_amber_rounded, AppColors.warning, AppColors.warningLight);
+      case NotificationType.stockOut:
+        return (Icons.inventory_2_outlined, AppColors.danger, AppColors.dangerLight);
       case NotificationType.broadcast:
         return (Icons.campaign_outlined, AppColors.primary, AppColors.primaryLight);
     }

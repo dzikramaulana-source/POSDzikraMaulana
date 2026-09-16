@@ -1,5 +1,6 @@
 const fs = require('fs');
 const whatsappService = require('../services/whatsappService');
+const WhatsAppRecipient = require('../models/WhatsAppRecipient');
 
 // @desc    Halaman untuk menghubungkan akun WhatsApp (menampilkan QR)
 // @route   GET /api/whatsapp
@@ -128,6 +129,48 @@ const restart = async (req, res) => {
   }
 };
 
+// Simpan nomor pelanggan yang berhasil dikirimi struk agar bisa disarankan
+// kembali pada fitur autocomplete. Best-effort: kegagalan menyimpan tidak
+// boleh menggagalkan pengiriman struk yang sudah berhasil.
+const recordRecipient = async (number) => {
+  try {
+    if (!number) return;
+    await WhatsAppRecipient.findOneAndUpdate(
+      { phone: number },
+      { lastUsedAt: new Date() },
+      { upsert: true }
+    );
+  } catch (error) {
+    console.error('Gagal menyimpan nomor pelanggan:', error.message);
+  }
+};
+
+// @desc    Cari nomor pelanggan yang pernah dikirimi struk (autocomplete)
+// @route   GET /api/whatsapp/recipients?last4=7890&limit=5
+// @access  Private
+const searchRecipients = async (req, res) => {
+  try {
+    const digits = String(req.query.last4 || '').replace(/[^0-9]/g, '');
+    if (digits.length < 4) {
+      return res.json([]);
+    }
+
+    const suffix = digits.slice(-4);
+    const limit = Math.min(Number(req.query.limit) || 5, 20);
+
+    const recipients = await WhatsAppRecipient.find({
+      phone: { $regex: `${suffix}$` },
+    })
+      .sort({ lastUsedAt: -1 })
+      .limit(limit)
+      .select('phone lastUsedAt');
+
+    res.json(recipients);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Kirim file PDF struk ke nomor WhatsApp pelanggan
 // @route   POST /api/whatsapp/send-document
 // @access  Private
@@ -157,6 +200,8 @@ const sendReceiptDocument = async (req, res) => {
       filename,
     });
 
+    await recordRecipient(result.number);
+
     res.json({ message: 'Struk berhasil dikirim ke WhatsApp', ...result });
   } catch (error) {
     res.status(error.statusCode || 500).json({ message: error.message });
@@ -172,6 +217,8 @@ module.exports = {
   getPairingPage,
   getStatus,
   getQr,
+  searchRecipients,
+  recordRecipient,
   sendReceiptDocument,
   logout,
   restart,
