@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../config/api_config.dart';
+import '../providers/auth_provider.dart';
 import '../providers/setting_provider.dart';
 import '../theme/app_colors.dart';
 import '../utils/formatter.dart';
 import '../widgets/pos_app_bar_actions.dart';
+import 'connection_settings_screen.dart';
 
 /// Halaman Pengaturan Sistem (khusus admin).
 ///
@@ -250,9 +253,129 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 16),
 
+        // Kartu Koneksi Server
+        _buildConnectionCard(),
+        const SizedBox(height: 16),
+
         // Preview contoh perhitungan
         _buildPreviewCard(),
       ],
+    );
+  }
+
+  /// Buka pengaturan alamat server, lalu segarkan alamat yang ditampilkan.
+  ///
+  /// Bila alamat server diganti saat sesi masih aktif, token lama tidak berlaku
+  /// lagi sehingga pengguna dikeluarkan kembali ke layar login.
+  Future<void> _openConnectionSettings() async {
+    final authProvider = context.read<AuthProvider>();
+    final baseUrlBefore = ApiConfig.baseUrl;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ConnectionSettingsScreen()),
+    );
+    if (!mounted) return;
+
+    if (ApiConfig.baseUrl != baseUrlBefore && authProvider.isLoggedIn) {
+      await authProvider.logout();
+      return;
+    }
+    setState(() {});
+  }
+
+  /// Kartu alamat server backend yang sedang dipakai aplikasi.
+  Widget _buildConnectionCard() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.dns_rounded, size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              const Text(
+                'Koneksi Server',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
+                ),
+              ),
+              const Spacer(),
+              if (ApiConfig.isCustom)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'Diatur manual',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMedium,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Alamat backend yang dipakai aplikasi ini. Ubah bila IP komputer server berubah.',
+            style: TextStyle(fontSize: 12.5, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.link_rounded,
+                    size: 16, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    ApiConfig.baseUrl,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontFamily: 'monospace',
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 46,
+            child: OutlinedButton.icon(
+              onPressed: _openConnectionSettings,
+              icon: const Icon(Icons.settings_ethernet_rounded, size: 18),
+              label: const Text(
+                'Ubah Alamat Server',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

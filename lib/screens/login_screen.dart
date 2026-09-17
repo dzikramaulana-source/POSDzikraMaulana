@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../config/api_config.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_colors.dart';
+import 'connection_settings_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -28,6 +30,14 @@ class _LoginScreenState extends State<LoginScreen> {
       _usernameController.text = username;
       _passwordController.text = password;
     });
+  }
+
+  /// Buka pengaturan alamat server, lalu segarkan alamat yang ditampilkan.
+  Future<void> _openConnectionSettings() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ConnectionSettingsScreen()),
+    );
+    if (mounted) setState(() {});
   }
 
   Future<void> _login() async {
@@ -428,6 +438,65 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Alamat server backend yang sedang dipakai + pintu masuk pengaturan
+          _buildServerRow(),
+        ],
+      ),
+    );
+  }
+
+  /// Baris informasi alamat server aktif, dengan tombol untuk mengubahnya.
+  /// Ditempatkan di layar login agar bisa diatur sebelum pengguna masuk.
+  Widget _buildServerRow() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.dns_outlined, size: 18, color: AppColors.textMuted),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Server Backend',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                Text(
+                  ApiConfig.baseUrl,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton.icon(
+            onPressed: _openConnectionSettings,
+            icon: const Icon(Icons.edit_rounded, size: 16),
+            label: const Text(
+              'Ubah',
+              style: TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
         ],

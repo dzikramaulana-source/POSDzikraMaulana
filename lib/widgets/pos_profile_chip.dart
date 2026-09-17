@@ -115,11 +115,6 @@ class PosProfileChip extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              '@${user?.username ?? '-'}',
-              style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted),
-            ),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

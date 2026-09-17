@@ -160,6 +160,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 /// Opsi dropdown kategori pada Manajemen Produk.
 const List<String> _categoryOptions = ['Semua', 'Makanan', 'Minuman', 'Camilan'];
 
+/// Pilihan kategori produk pada form tambah/edit produk.
+const List<String> _productCategoryOptions = ['Makanan', 'Minuman', 'Camilan'];
+
 /// Opsi dropdown pengurutan: berdasarkan stok (Terendah/Terbanyak) atau nama (A–Z/Z–A).
 const List<String> _sortOptions = ['Terendah', 'Terbanyak', 'A–Z', 'Z–A'];
 
@@ -773,8 +776,10 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
   late final TextEditingController _priceController;
   late final TextEditingController _costController;
   late final TextEditingController _stockController;
-  late final TextEditingController _categoryController;
   bool _isSaving = false;
+
+  /// Kategori terpilih dari dropdown.
+  String? _category;
 
   // Gambar produk: byte hasil pick (jika baru dipilih) atau gambar lama.
   Uint8List? _pickedImageBytes;
@@ -790,8 +795,16 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     _priceController = TextEditingController(text: p.price.toStringAsFixed(0));
     _costController = TextEditingController(text: p.cost.toStringAsFixed(0));
     _stockController = TextEditingController(text: p.stock.toString());
-    _categoryController = TextEditingController(text: p.category);
+    _category = p.category.isEmpty ? null : p.category;
   }
+
+  /// Opsi dropdown kategori. Kategori tersimpan yang belum termasuk daftar
+  /// tetap disertakan agar produk lama tidak berubah saat diedit.
+  List<String> get _categoryItems => [
+        ..._productCategoryOptions,
+        if (_category != null && !_productCategoryOptions.contains(_category))
+          _category!,
+      ];
 
   @override
   void dispose() {
@@ -800,7 +813,6 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     _priceController.dispose();
     _costController.dispose();
     _stockController.dispose();
-    _categoryController.dispose();
     super.dispose();
   }
 
@@ -954,7 +966,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
           _costController.text.trim().isEmpty ? '0' : _costController.text.trim()),
       stock: int.parse(
           _stockController.text.trim().isEmpty ? '0' : _stockController.text.trim()),
-      category: _categoryController.text.trim(),
+      category: _category!,
       image: _clearImage ? '' : null,
       imageBytes: _pickedImageBytes,
       imageName: _pickedImageName,
@@ -1148,12 +1160,29 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextFormField(
-                          controller: _categoryController,
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _category,
+                          isExpanded: true,
+                          dropdownColor: AppColors.surface,
                           decoration: const InputDecoration(
                             labelText: 'Kategori',
                             prefixIcon: Icon(Icons.category_outlined),
                           ),
+                          hint: const Text('Pilih'),
+                          validator: (v) =>
+                              v == null ? 'Kategori wajib dipilih' : null,
+                          items: [
+                            for (final c in _categoryItems)
+                              DropdownMenuItem<String>(
+                                value: c,
+                                child: Text(
+                                  c,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
+                          onChanged: (v) => setState(() => _category = v),
                         ),
                       ),
                     ],

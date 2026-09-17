@@ -332,70 +332,96 @@ class _ReportScreenState extends State<ReportScreen> {
         border: Border.all(color: AppColors.borderLight),
         boxShadow: AppColors.cardShadow,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final narrow = constraints.maxWidth < 480;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Perbandingan Periode Sebelumnya',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isUp ? Icons.trending_up_rounded : Icons.trending_down_rounded,
-                      color: color,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${isUp ? '+' : ''}${percent.toStringAsFixed(1)}%',
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Perbandingan Periode Sebelumnya',
                       style: TextStyle(
-                        color: color,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: bgColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isUp ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                          color: color,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${isUp ? '+' : ''}${percent.toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            color: color,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (narrow)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _comparisonItem(
+                      'Periode Ini',
+                      formatRupiah(current),
+                      AppColors.primary,
+                    ),
+                    const SizedBox(height: 12),
+                    _comparisonItem(
+                      'Periode Sebelumnya',
+                      formatRupiah(previous),
+                      AppColors.textSecondary,
+                    ),
+                  ],
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: _comparisonItem(
+                        'Periode Ini',
+                        formatRupiah(current),
+                        AppColors.primary,
+                      ),
+                    ),
+                    Container(width: 1, height: 36, color: AppColors.borderLight),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _comparisonItem(
+                        'Periode Sebelumnya',
+                        formatRupiah(previous),
+                        AppColors.textSecondary,
                       ),
                     ),
                   ],
                 ),
-              ),
             ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _comparisonItem(
-                  'Periode Ini',
-                  formatRupiah(current),
-                  AppColors.primary,
-                ),
-              ),
-              Container(width: 1, height: 36, color: AppColors.borderLight),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _comparisonItem(
-                  'Periode Sebelumnya',
-                  formatRupiah(previous),
-                  AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }

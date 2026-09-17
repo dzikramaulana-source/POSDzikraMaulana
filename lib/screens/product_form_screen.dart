@@ -6,6 +6,9 @@ import '../models/product.dart';
 import '../providers/product_provider.dart';
 import '../theme/app_colors.dart';
 
+/// Pilihan kategori produk yang tersedia pada form.
+const List<String> _categoryOptions = ['Makanan', 'Minuman', 'Camilan'];
+
 class ProductFormScreen extends StatefulWidget {
   final Product? product; // null = tambah baru, tidak null = edit
 
@@ -22,8 +25,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   late final TextEditingController _priceController;
   late final TextEditingController _costController;
   late final TextEditingController _stockController;
-  late final TextEditingController _categoryController;
   bool _isSaving = false;
+
+  /// Kategori terpilih dari dropdown.
+  String? _category;
 
   // Gambar produk: byte hasil pick (jika baru dipilih) atau gambar lama.
   Uint8List? _pickedImageBytes;
@@ -44,8 +49,18 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         TextEditingController(text: p != null ? p.cost.toStringAsFixed(0) : '');
     _stockController =
         TextEditingController(text: p != null ? p.stock.toString() : '');
-    _categoryController = TextEditingController(text: p?.category ?? 'Umum');
+    final existingCategory = p?.category;
+    _category = existingCategory == null || existingCategory.isEmpty
+        ? null
+        : existingCategory;
   }
+
+  /// Opsi dropdown kategori. Kategori tersimpan yang belum termasuk daftar
+  /// tetap disertakan agar produk lama tidak berubah saat diedit.
+  List<String> get _categoryItems => [
+        ..._categoryOptions,
+        if (_category != null && !_categoryOptions.contains(_category)) _category!,
+      ];
 
   @override
   void dispose() {
@@ -54,7 +69,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _priceController.dispose();
     _costController.dispose();
     _stockController.dispose();
-    _categoryController.dispose();
     super.dispose();
   }
 
@@ -241,7 +255,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     final stock = int.parse(_stockController.text.trim().isEmpty
         ? '0'
         : _stockController.text.trim());
-    final category = _categoryController.text.trim();
+    final category = _category!;
 
     bool success;
     if (_isEdit) {
@@ -369,11 +383,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                         v == null || v.trim().isEmpty ? 'SKU wajib diisi' : null,
                   ),
                   const SizedBox(height: 14),
-                  _StyledField(
-                    controller: _categoryController,
+                  _StyledDropdown(
+                    value: _category,
                     label: 'Kategori',
                     icon: Icons.category_outlined,
-                    hintText: 'Contoh: Minuman',
+                    hintText: 'Pilih Kategori',
+                    items: _categoryItems,
+                    validator: (value) =>
+                        value == null ? 'Kategori wajib dipilih' : null,
+                    onChanged: (value) => setState(() => _category = value),
                   ),
                 ],
               ),
@@ -621,6 +639,86 @@ class _StyledField extends StatelessWidget {
           borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
         ),
       ),
+    );
+  }
+}
+
+/// Dropdown pilihan bernuansa sama dengan [_StyledField].
+class _StyledDropdown extends StatelessWidget {
+  final String? value;
+  final String label;
+  final IconData icon;
+  final String hintText;
+  final List<String> items;
+  final FormFieldValidator<String>? validator;
+  final ValueChanged<String?> onChanged;
+
+  const _StyledDropdown({
+    required this.value,
+    required this.label,
+    required this.icon,
+    required this.hintText,
+    required this.items,
+    required this.onChanged,
+    this.validator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      initialValue: value,
+      isExpanded: true,
+      dropdownColor: AppColors.surface,
+      validator: validator,
+      onChanged: onChanged,
+      style: const TextStyle(
+        fontSize: 14,
+        color: AppColors.textDark,
+        fontWeight: FontWeight.w500,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+        hintText: hintText,
+        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+        prefixIcon: Icon(icon, size: 18, color: AppColors.textMuted),
+        filled: true,
+        fillColor: AppColors.surfaceVariant,
+        isDense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.danger),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
+        ),
+      ),
+      items: [
+        for (final item in items)
+          DropdownMenuItem<String>(
+            value: item,
+            child: Text(
+              item,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+      ],
     );
   }
 }

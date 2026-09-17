@@ -289,7 +289,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                     ..._kasirList.map((k) {
                       return RadioListTile<String>(
                         title: Text(k.name),
-                        subtitle: Text('@${k.username}'),
                         value: k.id,
                       );
                     }),

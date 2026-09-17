@@ -298,13 +298,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   ),
                 ],
               ),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  '@${user.username}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                ),
-              ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [

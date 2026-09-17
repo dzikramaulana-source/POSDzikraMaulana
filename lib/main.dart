@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+import 'config/api_config.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/notification_provider.dart';
@@ -16,6 +17,8 @@ import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Muat alamat server tersimpan sebelum request pertama dijalankan
+  await ApiConfig.load();
   // Inisialisasi data locale untuk format tanggal Indonesia (id_ID)
   await initializeDateFormatting('id_ID');
   runApp(const PosApp());
