@@ -35,6 +35,13 @@ class ProductProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Cari produk dari barcode (fitur scan di Kasir).
+  /// `null` = barcode tidak terdaftar; melempar error bila koneksi bermasalah.
+  /// Tidak mengubah daftar produk yang sedang tampil.
+  Future<Product?> findByBarcode(String barcode) {
+    return ProductService.getProductByBarcode(barcode);
+  }
+
   Future<bool> addProduct({
     required String name,
     required String sku,

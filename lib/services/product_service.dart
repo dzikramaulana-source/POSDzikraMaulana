@@ -71,6 +71,20 @@ class ProductService {
     return Product.fromJson(data['product'] as Map<String, dynamic>);
   }
 
+  // Cari produk berdasarkan barcode (untuk fitur scan di Kasir).
+  // Mengembalikan null bila barcode tidak terdaftar.
+  static Future<Product?> getProductByBarcode(String barcode) async {
+    try {
+      final data = await ApiService.get(
+        '/products/barcode/${Uri.encodeComponent(barcode)}',
+      );
+      return Product.fromJson(data['product'] as Map<String, dynamic>);
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
   // Tambah produk baru (opsional sertakan gambar)
   static Future<Product> createProduct({
     required String name,

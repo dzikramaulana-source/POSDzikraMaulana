@@ -16,6 +16,7 @@ import '../utils/receipt_printer.dart';
 import '../utils/whatsapp_sender.dart';
 import '../theme/app_colors.dart';
 import '../widgets/pos_app_bar_actions.dart';
+import 'barcode_scanner_screen.dart';
 
 /// Besaran PPN dari suatu subtotal (dibulatkan ke rupiah penuh).
 /// [rate] adalah tarif PPN sebagai pecahan (mis. 0.10), diambil dari pengaturan sistem.
@@ -67,6 +68,40 @@ class _KasirScreenState extends State<KasirScreen> {
 
   void _search(String query) {
     context.read<ProductProvider>().loadProducts(search: query.trim());
+  }
+
+  /// Proses hasil scan barcode: cari produk lalu masukkan ke keranjang.
+  /// Dipanggil oleh layar scanner kamera.
+  Future<BarcodeScanResult> _handleScannedBarcode(String code) async {
+    final productProvider = context.read<ProductProvider>();
+    final cart = context.read<CartProvider>();
+    try {
+      final product = await productProvider.findByBarcode(code);
+      if (product == null) {
+        return BarcodeScanResult(false, 'Barcode $code tidak terdaftar');
+      }
+      if (product.stock <= 0) {
+        return BarcodeScanResult(false, 'Stok "${product.name}" habis');
+      }
+
+      // addItem() menambah item baru atau menaikkan qty bila sudah ada.
+      cart.addItem(product);
+      final qty = cart.items
+          .where((i) => i.productId == product.id)
+          .fold<int>(0, (sum, i) => sum + i.qty);
+
+      return BarcodeScanResult(true, '${product.name} x$qty di keranjang');
+    } catch (e) {
+      return BarcodeScanResult(false, 'Gagal memuat produk: $e');
+    }
+  }
+
+  Future<void> _openBarcodeScanner() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BarcodeScannerScreen(onScan: _handleScannedBarcode),
+      ),
+    );
   }
 
   Future<void> _checkout() async {
@@ -228,6 +263,28 @@ class _KasirScreenState extends State<KasirScreen> {
       onChanged: (value) => setState(() => _selectedCategory = value),
     );
 
+    // Tombol scan barcode kamera, ditempatkan di samping kolom pencarian.
+    final scanButton = Tooltip(
+      message: 'Scan Barcode',
+      child: Material(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: _openBarcodeScanner,
+          borderRadius: BorderRadius.circular(12),
+          child: const SizedBox(
+            width: 46,
+            height: 46,
+            child: Icon(
+              Icons.qr_code_scanner_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+        ),
+      ),
+    );
+
     return Container(
       padding: EdgeInsets.fromLTRB(
         narrow ? 14 : 20,
@@ -281,13 +338,21 @@ class _KasirScreenState extends State<KasirScreen> {
           ),
           SizedBox(height: narrow ? 10 : 12),
           if (narrow) ...[
-            searchField,
+            Row(
+              children: [
+                Expanded(child: searchField),
+                const SizedBox(width: 10),
+                scanButton,
+              ],
+            ),
             const SizedBox(height: 10),
             categoryFilter,
           ] else
             Row(
               children: [
                 Expanded(flex: 3, child: searchField),
+                const SizedBox(width: 12),
+                scanButton,
                 const SizedBox(width: 12),
                 Flexible(flex: 2, child: categoryFilter),
               ],

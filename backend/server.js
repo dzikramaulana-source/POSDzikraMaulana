@@ -13,6 +13,7 @@ const notificationRoutes = require('./src/routes/notificationRoutes');
 const settingRoutes = require('./src/routes/settingRoutes');
 const whatsappRoutes = require('./src/routes/whatsappRoutes');
 const whatsappService = require('./src/services/whatsappService');
+const { backfillMissingBarcodes } = require('./src/services/barcodeService');
 
 const app = express();
 
@@ -54,7 +55,15 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
-connectDB().then(() => {
+connectDB().then(async () => {
+  // Lengkapi barcode produk lama yang belum punya (otomatis, tanpa aksi manual).
+  try {
+    const filled = await backfillMissingBarcodes();
+    console.log(`Barcode dilengkapi untuk ${filled} produk lama.`);
+  } catch (error) {
+    console.error('Backfill barcode gagal:', error.message);
+  }
+
   const server = app.listen(PORT, () => {
     console.log(`Server POS berjalan di http://localhost:${PORT}`);
     // Mulai koneksi WhatsApp di background agar QR langsung tampil di terminal

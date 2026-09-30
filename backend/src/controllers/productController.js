@@ -20,6 +20,7 @@ const getProducts = async (req, res) => {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
         { sku: { $regex: search, $options: 'i' } },
+        { barcode: { $regex: search, $options: 'i' } },
       ];
     }
     if (category) {
@@ -48,6 +49,23 @@ const getProductById = async (req, res) => {
   }
 };
 
+// @desc    Get product by barcode (untuk fitur scan di kasir)
+// @route   GET /api/products/barcode/:code
+// @access  Private
+const getProductByBarcode = async (req, res) => {
+  try {
+    const product = await Product.findOne({ barcode: req.params.code });
+    if (!product) {
+      return res
+        .status(404)
+        .json({ message: `Produk dengan barcode ${req.params.code} tidak ditemukan` });
+    }
+    res.json({ product });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Create product
 // @route   POST /api/products
 // @access  Private
@@ -64,6 +82,7 @@ const createProduct = async (req, res) => {
       return res.status(400).json({ message: `SKU "${sku}" sudah digunakan` });
     }
 
+    // Barcode dibuat otomatis oleh model Product (hook pre-validate).
     const product = await Product.create({
       name,
       sku,
@@ -77,7 +96,8 @@ const createProduct = async (req, res) => {
     res.status(201).json({ message: 'Produk berhasil ditambahkan', product });
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(400).json({ message: 'SKU sudah digunakan' });
+      const field = error.keyPattern && error.keyPattern.barcode ? 'Barcode' : 'SKU';
+      return res.status(400).json({ message: `${field} sudah digunakan` });
     }
     res.status(500).json({ message: error.message });
   }
@@ -115,6 +135,7 @@ const updateProduct = async (req, res) => {
         : req.body.image !== undefined
           ? req.body.image
           : product.image;
+    // Barcode sengaja tidak diubah: nilainya tetap dari saat produk dibuat.
 
     await product.save();
     res.json({ message: 'Produk berhasil diperbarui', product });
@@ -139,4 +160,11 @@ const deleteProduct = async (req, res) => {
   }
 };
 
-module.exports = { getProducts, getProductById, createProduct, updateProduct, deleteProduct };
+module.exports = {
+  getProducts,
+  getProductById,
+  getProductByBarcode,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+};

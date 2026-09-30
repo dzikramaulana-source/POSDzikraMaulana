@@ -10,6 +10,7 @@ import '../utils/formatter.dart';
 import '../widgets/pos_app_bar_actions.dart';
 import '../widgets/pos_filter_dropdown.dart';
 import '../widgets/pos_sidebar.dart';
+import '../widgets/product_barcode.dart';
 import 'kasir_screen.dart';
 import 'product_form_screen.dart';
 import 'report_screen.dart';
@@ -696,6 +697,30 @@ class _ProductHomePageState extends State<_ProductHomePage> {
                         ],
                       ],
                     ),
+                    if (product.barcode.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.qr_code_2,
+                              size: 11, color: AppColors.textMuted),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              product.barcode,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 9.5,
+                                fontFamily: 'monospace',
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textMuted,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 6),
                     Text(
                       formatRupiah(product.price),
@@ -1102,6 +1127,10 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                     validator: (v) =>
                         v == null || v.trim().isEmpty ? 'SKU wajib diisi' : null,
                   ),
+                  const SizedBox(height: 12),
+                  // Gambar barcode selalu dibentuk dari angka barcode yang
+                  // tersimpan di database (permanen untuk produk lama & baru).
+                  ProductBarcode(product: widget.product),
                   const SizedBox(height: 12),
                   Row(
                     children: [

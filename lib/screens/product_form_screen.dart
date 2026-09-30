@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/product_provider.dart';
 import '../theme/app_colors.dart';
+import '../widgets/product_barcode.dart';
 
 /// Pilihan kategori produk yang tersedia pada form.
 const List<String> _categoryOptions = ['Makanan', 'Minuman', 'Camilan'];
@@ -382,6 +383,27 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     validator: (v) =>
                         v == null || v.trim().isEmpty ? 'SKU wajib diisi' : null,
                   ),
+                  const SizedBox(height: 14),
+                  if (_isEdit)
+                    ProductBarcode(product: widget.product!)
+                  else
+                    Row(
+                      children: const [
+                        Icon(Icons.qr_code_2,
+                            size: 18, color: AppColors.textMuted),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Barcode dibuat otomatis oleh sistem saat produk disimpan.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: 14),
                   _StyledDropdown(
                     value: _category,

@@ -7,6 +7,9 @@ class Product {
   final String id;
   final String name;
   final String sku;
+
+  /// Barcode numerik unik produk (dibuat otomatis oleh server).
+  final String barcode;
   final double price;
   final double cost;
   final int stock;
@@ -17,6 +20,7 @@ class Product {
     required this.id,
     required this.name,
     required this.sku,
+    this.barcode = '',
     required this.price,
     required this.cost,
     required this.stock,
@@ -29,6 +33,7 @@ class Product {
       id: json['_id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       sku: json['sku']?.toString() ?? '',
+      barcode: json['barcode']?.toString() ?? '',
       price: (json['price'] as num?)?.toDouble() ?? 0,
       cost: (json['cost'] as num?)?.toDouble() ?? 0,
       stock: (json['stock'] as num?)?.toInt() ?? 0,
@@ -40,6 +45,7 @@ class Product {
   Map<String, dynamic> toJson() => {
         'name': name,
         'sku': sku,
+        'barcode': barcode,
         'price': price,
         'cost': cost,
         'stock': stock,
@@ -52,6 +58,7 @@ class Product {
       id: id,
       name: name,
       sku: sku,
+      barcode: barcode,
       price: price,
       cost: cost,
       stock: stock ?? this.stock,
@@ -66,6 +73,9 @@ class Product {
     if (image.startsWith('http')) return image;
     return '${ApiConfig.baseUrl}$image';
   }
+
+  /// Produk sudah punya barcode dari server.
+  bool get hasBarcode => barcode.isNotEmpty;
 
   /// Status ketersediaan stok: habis (0), menipis (1–5), tersedia (>5)
   StockStatus get stockStatus {
